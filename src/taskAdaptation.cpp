@@ -11,10 +11,15 @@
 
 // variables
 
-geometry_msgs::TwistStamped msgDesiredVelocity;
+geometry_msgs::TwistStamped msgAdaptedVelocity;
+geometry_msgs::WrenchStamped msgWrenchControl;
 
-std::vector<float> DesiredVelocity;
+
+
 std::vector<float> RealVelocity;
+std::vector<float> DesiredVelocity;
+std::vector<float> ControlWrench;
+
 
 std::vector<float> Task0_velocity;
 std::vector<float> Task1_velocity;
@@ -39,6 +44,8 @@ std::vector<float> Beliefs;
 std::vector<float> UpdateBeliefsRaw;
 std::vector<float> UpdateBeliefs;
 
+double D_gain;
+double epsilon;
 
 
 
@@ -74,10 +81,14 @@ void WinnerTakeAll();
 
 int main(int argc, char **argv)
 {
+	D_gain = 10;
+	epsilon = 0.1;
+
 
 	// initializing the varibales
-	DesiredVelocity.resize(3);
 	RealVelocity.resize(3);
+	DesiredVelocity.resize(3);
+	ControlWrench.resize(6);
 
 	Task0_velocity.resize(3);
 	Task1_velocity.resize(3);
@@ -128,8 +139,8 @@ int main(int argc, char **argv)
 	ros::NodeHandle n;
 
 //	ros::Publisher pub_velocity = n.advertise<geometry_msgs::TwistStamped>("TaskAdaptation/DesiredVelocity", 1000);
-//	ros::Publisher pub_velocity = n.advertise<geometry_msgs::TwistStamped>("/PDController/velocity_desired", 1);
-	ros::Publisher pub_velocity = n.advertise<geometry_msgs::WrenchStamped>("/wrench_control", 1);
+	ros::Publisher pub_adapted_velocity = n.advertise<geometry_msgs::TwistStamped>("/TaskAdaptation/adapted_velocity", 1);
+	ros::Publisher pub_wrench_control   = n.advertise<geometry_msgs::WrenchStamped>("/wrench_control", 1);
 
 
 //	ros::Subscriber sub_realVelocity = n.subscribe("TaskAdaptation/RealVelocity", 1000, updateRealVelocity);
@@ -179,7 +190,7 @@ int main(int argc, char **argv)
 
 			for(int i=0;i<Beliefs.size(); i++)
 			{
-				Beliefs[i] += 0.1 * UpdateBeliefs[i];
+				Beliefs[i] += epsilon * UpdateBeliefs[i];
 
 				if(Beliefs[i] > 1)
 					Beliefs[i]=1;
@@ -190,12 +201,29 @@ int main(int argc, char **argv)
 
 
 
-			msgDesiredVelocity.header.stamp = ros::Time::now();
-			msgDesiredVelocity.twist.linear.x = DesiredVelocity[0];
-			msgDesiredVelocity.twist.linear.y = DesiredVelocity[1];
-			msgDesiredVelocity.twist.linear.z = DesiredVelocity[2];
+			msgAdaptedVelocity.header.stamp = ros::Time::now();
+			msgAdaptedVelocity.twist.linear.x = DesiredVelocity[0];
+			msgAdaptedVelocity.twist.linear.y = DesiredVelocity[1];
+			msgAdaptedVelocity.twist.linear.z = DesiredVelocity[2];
 
-			pub_velocity.publish(msgDesiredVelocity);
+			pub_adapted_velocity.publish(msgAdaptedVelocity);
+
+
+
+			ControlWrench[0] = -D_gain * (RealVelocity[0] - DesiredVelocity[0]);
+			ControlWrench[1] = -D_gain * (RealVelocity[1] - DesiredVelocity[1]);
+			ControlWrench[2] = -D_gain * (RealVelocity[2] - DesiredVelocity[2]);
+
+
+			msgWrenchControl.header.stamp = ros::Time::now();
+			msgWrenchControl.wrench.force.x = ControlWrench[0];
+			msgWrenchControl.wrench.force.y = ControlWrench[1];
+			msgWrenchControl.wrench.force.z = ControlWrench[2];
+			msgWrenchControl.wrench.torque.x = 0;
+			msgWrenchControl.wrench.torque.y = 0;
+			msgWrenchControl.wrench.torque.z = 0;
+
+			pub_wrench_control.publish(msgWrenchControl);
 
 
 
@@ -205,6 +233,11 @@ int main(int argc, char **argv)
 			flag_task2_newdata = false;
 			flag_task3_newdata = false;
 			flag_task4_newdata = false;
+
+
+
+
+
 
 		}
 
