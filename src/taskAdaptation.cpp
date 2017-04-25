@@ -5,7 +5,9 @@
 #include <ros/ros.h>
 
 #include "geometry_msgs/TwistStamped.h"
+#include "geometry_msgs/WrenchStamped.h"
 
+#include "cartesian_state_msgs/PoseTwist.h"
 
 // variables
 
@@ -126,11 +128,12 @@ int main(int argc, char **argv)
 	ros::NodeHandle n;
 
 //	ros::Publisher pub_velocity = n.advertise<geometry_msgs::TwistStamped>("TaskAdaptation/DesiredVelocity", 1000);
-	ros::Publisher pub_velocity = n.advertise<geometry_msgs::TwistStamped>("/PDController/velocity_desired", 1);
+//	ros::Publisher pub_velocity = n.advertise<geometry_msgs::TwistStamped>("/PDController/velocity_desired", 1);
+	ros::Publisher pub_velocity = n.advertise<geometry_msgs::WrenchStamped>("/wrench_control", 1);
 
 
 //	ros::Subscriber sub_realVelocity = n.subscribe("TaskAdaptation/RealVelocity", 1000, updateRealVelocity);
-	ros::Subscriber sub_realVelocity = n.subscribe("falcon/velocity", 1000, updateRealVelocity);
+	ros::Subscriber sub_realVelocity = n.subscribe("ur5_cartesian_velocity_controller/ee_state", 1000, updateRealVelocity);
 
 
 	ros::Subscriber sub_task1 = n.subscribe("TaskAdaptation/task1/DesiredVelocity", 1000, UpdateTask1);
