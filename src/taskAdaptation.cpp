@@ -9,10 +9,14 @@
 
 #include "cartesian_state_msgs/PoseTwist.h"
 
+
+#include <dynamic_reconfigure/server.h>
+#include <task_adaptation/task_adaptation_params.h>
 // variables
 
 geometry_msgs::TwistStamped msgAdaptedVelocity;
 geometry_msgs::WrenchStamped msgWrenchControl;
+cartesian_state_msgs::PoseTwist msgPoseTwist;
 
 
 
@@ -53,13 +57,19 @@ double epsilon;
 
 
 
-void updateRealVelocity(const geometry_msgs::TwistStamped::ConstPtr& msg);
+void updateRealVelocity(const cartesian_state_msgs::PoseTwist::ConstPtr& msg);
+void updateRealVelocity_world(const geometry_msgs::Twist::ConstPtr& msg);
 
 
 void UpdateTask1(const geometry_msgs::TwistStamped::ConstPtr& msg);
 void UpdateTask2(const geometry_msgs::TwistStamped::ConstPtr& msg);
 void UpdateTask3(const geometry_msgs::TwistStamped::ConstPtr& msg);
 void UpdateTask4(const geometry_msgs::TwistStamped::ConstPtr& msg);
+
+void configCallback(task_adaptation::task_adaptation_params &config, uint32_t level);
+void UpdateParamCallback(const task_adaptation::task_adaptation_params::ConstPtr &msg);
+
+
 
 void DisplayInformation();
 
@@ -81,8 +91,7 @@ void WinnerTakeAll();
 
 int main(int argc, char **argv)
 {
-	D_gain = 10;
-	epsilon = 0.1;
+
 
 
 	// initializing the varibales
@@ -105,8 +114,8 @@ int main(int argc, char **argv)
 
 
 	Beliefs.resize(5);
-	Beliefs[0] = 1;
-	Beliefs[1] = 0;
+	Beliefs[0] = 0;
+	Beliefs[1] = 1;
 	Beliefs[2] = 0;
 	Beliefs[3] = 0;
 	Beliefs[4] = 0;
@@ -144,13 +153,31 @@ int main(int argc, char **argv)
 
 
 //	ros::Subscriber sub_realVelocity = n.subscribe("TaskAdaptation/RealVelocity", 1000, updateRealVelocity);
-	ros::Subscriber sub_realVelocity = n.subscribe("ur5_cartesian_velocity_controller/ee_state", 1000, updateRealVelocity);
+	ros::Subscriber sub_realVelocity = n.subscribe("/ur5_cartesian_velocity_controller_sim/ee_state", 1000, updateRealVelocity);
+	ros::Subscriber sub_realVelocity_world = n.subscribe("/ur5_cartesian_velocity_controller_sim/cart_vel_world", 1000, updateRealVelocity_world);
 
 
 	ros::Subscriber sub_task1 = n.subscribe("TaskAdaptation/task1/DesiredVelocity", 1000, UpdateTask1);
 	ros::Subscriber sub_task2 = n.subscribe("TaskAdaptation/task2/DesiredVelocity", 1000, UpdateTask2);
 	ros::Subscriber sub_task3 = n.subscribe("TaskAdaptation/task3/DesiredVelocity", 1000, UpdateTask3);
 	ros::Subscriber sub_task4 = n.subscribe("TaskAdaptation/task4/DesiredVelocity", 1000, UpdateTask4);
+
+
+
+	D_gain  = 2;
+	epsilon = 0.01;
+
+
+	// Initialize node parameters from launch file or command line.
+	// Use a private node handle so that multiple instances of the node can be run simultaneously
+	// while using different parameters.
+	std::string topic;
+	int rate;
+	ros::NodeHandle private_node_handle_("~");
+	private_node_handle_.param("rate", rate, int(40));
+	private_node_handle_.param("topic", topic, std::string("/TaskAdaptation/dynamic_params"));
+	ros::Subscriber sub_message = n.subscribe(topic.c_str(), 1000, UpdateParamCallback);
+
 
 
 
@@ -165,7 +192,7 @@ int main(int argc, char **argv)
 	{
 
 
-		if ( (ros::Time::now()-time_display).toSec() > 0  )
+		if ( (ros::Time::now() - time_display).toSec() > 0  )
 		{
 			DisplayInformation();
 			time_display = ros::Time::now() + freq_display;
@@ -178,7 +205,7 @@ int main(int argc, char **argv)
 		flagAdapt = flagAdapt && flag_task1_newdata && flag_task2_newdata;
 		flagAdapt = flagAdapt && flag_task3_newdata && flag_task4_newdata;
 
-		if(flagAdapt)
+		if (flagAdapt && 0)
 		{
 
 			UpdateDesiredVelocity();
@@ -188,42 +215,16 @@ int main(int argc, char **argv)
 			WinnerTakeAll();
 
 
-			for(int i=0;i<Beliefs.size(); i++)
+			for (int i = 0; i < Beliefs.size(); i++)
 			{
 				Beliefs[i] += epsilon * UpdateBeliefs[i];
 
-				if(Beliefs[i] > 1)
-					Beliefs[i]=1;
+				if (Beliefs[i] > 1)
+					Beliefs[i] = 1;
 
-				if(Beliefs[i] < 0)
+				if (Beliefs[i] < 0)
 					Beliefs[i] = 0;
 			}
-
-
-
-			msgAdaptedVelocity.header.stamp = ros::Time::now();
-			msgAdaptedVelocity.twist.linear.x = DesiredVelocity[0];
-			msgAdaptedVelocity.twist.linear.y = DesiredVelocity[1];
-			msgAdaptedVelocity.twist.linear.z = DesiredVelocity[2];
-
-			pub_adapted_velocity.publish(msgAdaptedVelocity);
-
-
-
-			ControlWrench[0] = -D_gain * (RealVelocity[0] - DesiredVelocity[0]);
-			ControlWrench[1] = -D_gain * (RealVelocity[1] - DesiredVelocity[1]);
-			ControlWrench[2] = -D_gain * (RealVelocity[2] - DesiredVelocity[2]);
-
-
-			msgWrenchControl.header.stamp = ros::Time::now();
-			msgWrenchControl.wrench.force.x = ControlWrench[0];
-			msgWrenchControl.wrench.force.y = ControlWrench[1];
-			msgWrenchControl.wrench.force.z = ControlWrench[2];
-			msgWrenchControl.wrench.torque.x = 0;
-			msgWrenchControl.wrench.torque.y = 0;
-			msgWrenchControl.wrench.torque.z = 0;
-
-			pub_wrench_control.publish(msgWrenchControl);
 
 
 
@@ -241,6 +242,47 @@ int main(int argc, char **argv)
 
 		}
 
+
+		UpdateDesiredVelocity();
+
+		msgAdaptedVelocity.header.stamp = ros::Time::now();
+		msgAdaptedVelocity.twist.linear.x = DesiredVelocity[0];
+		msgAdaptedVelocity.twist.linear.y = DesiredVelocity[1];
+		msgAdaptedVelocity.twist.linear.z = DesiredVelocity[2];
+
+		pub_adapted_velocity.publish(msgAdaptedVelocity);
+
+
+
+		ControlWrench[0] = -D_gain * (RealVelocity[0] - DesiredVelocity[0]);
+		ControlWrench[1] = -D_gain * (RealVelocity[1] - DesiredVelocity[1]);
+		ControlWrench[2] = -D_gain * (RealVelocity[2] - DesiredVelocity[2]);
+
+		if(ControlWrench[0] < -0.6)
+			ControlWrench[0] = -0.6;
+		if(ControlWrench[1] < -0.6)
+			ControlWrench[1] = -0.6;
+		if(ControlWrench[2] < -0.6)
+			ControlWrench[2] = -0.6;
+
+		if(ControlWrench[0] > 0.6)
+			ControlWrench[0] = 0.6;
+		if(ControlWrench[1] > 0.6)
+			ControlWrench[1] = 0.6;
+		if(ControlWrench[2] > 0.6)
+			ControlWrench[2] = 0.6;
+
+
+		msgWrenchControl.header.stamp = ros::Time::now();
+		msgWrenchControl.header.frame_id = "world"; // just for visualization
+		msgWrenchControl.wrench.force.x = ControlWrench[0];
+		msgWrenchControl.wrench.force.y = ControlWrench[1];
+		msgWrenchControl.wrench.force.z = ControlWrench[2];
+		msgWrenchControl.wrench.torque.x = 0;
+		msgWrenchControl.wrench.torque.y = 0;
+		msgWrenchControl.wrench.torque.z = 0;
+
+		pub_wrench_control.publish(msgWrenchControl);
 
 
 
@@ -270,16 +312,16 @@ void RawAdaptation()
 
 
 	UpdateBeliefsRaw[1] -= ComputeOutterSimilarity(Task1_velocity);
-	UpdateBeliefsRaw[1] -= 2 * ComputeInnerSimilarity(Beliefs[1],Task1_velocity);
+	UpdateBeliefsRaw[1] -= 2 * ComputeInnerSimilarity(Beliefs[1], Task1_velocity);
 
 	UpdateBeliefsRaw[2] -= ComputeOutterSimilarity(Task2_velocity);
-	UpdateBeliefsRaw[2] -= 2 * ComputeInnerSimilarity(Beliefs[2],Task2_velocity);
+	UpdateBeliefsRaw[2] -= 2 * ComputeInnerSimilarity(Beliefs[2], Task2_velocity);
 
 	UpdateBeliefsRaw[3] -= ComputeOutterSimilarity(Task3_velocity);
-	UpdateBeliefsRaw[3] -= 2 * ComputeInnerSimilarity(Beliefs[3],Task3_velocity);
+	UpdateBeliefsRaw[3] -= 2 * ComputeInnerSimilarity(Beliefs[3], Task3_velocity);
 
 	UpdateBeliefsRaw[4] -= ComputeOutterSimilarity(Task4_velocity);
-	UpdateBeliefsRaw[4] -= 2 * ComputeInnerSimilarity(Beliefs[4],Task4_velocity);
+	UpdateBeliefsRaw[4] -= 2 * ComputeInnerSimilarity(Beliefs[4], Task4_velocity);
 
 
 
@@ -309,9 +351,9 @@ void WinnerTakeAll()
 	// fining the winner who has the biggest value for UpdateBeliefsRaw
 	int winner_index = 0;
 
-	for(int i=1; i<UpdateBeliefsRaw.size();i++)
+	for (int i = 1; i < UpdateBeliefsRaw.size(); i++)
 	{
-		if(UpdateBeliefsRaw[i] > UpdateBeliefsRaw[winner_index])
+		if (UpdateBeliefsRaw[i] > UpdateBeliefsRaw[winner_index])
 			winner_index = i;
 	}
 
@@ -321,37 +363,37 @@ void WinnerTakeAll()
 
 
 	int runnerUp_index = 0;
-	if(winner_index == 0)
+	if (winner_index == 0)
 		runnerUp_index = 1;
 
-	for(int i=0; i<UpdateBeliefsRaw.size();i++)
+	for (int i = 0; i < UpdateBeliefsRaw.size(); i++)
 	{
-		if(i ==  winner_index)
+		if (i ==  winner_index)
 			continue;
 
-		if(UpdateBeliefsRaw[i] > UpdateBeliefsRaw[runnerUp_index])
+		if (UpdateBeliefsRaw[i] > UpdateBeliefsRaw[runnerUp_index])
 			runnerUp_index = i;
 	}
 
 	// computing the middle point and removing form all raw updates
 	float offset = 0.5 * (UpdateBeliefsRaw[winner_index] + UpdateBeliefsRaw[runnerUp_index]);
 
-	for(int i=0; i<UpdateBeliefsRaw.size();i++)
+	for (int i = 0; i < UpdateBeliefsRaw.size(); i++)
 		UpdateBeliefsRaw[i] -= offset;
 
 
 	// computing the sum of updates and setting to zero for active one so we keep the sum beliefs at 1.
 	float UpdateSum = 0;
 
-	for(int i=0; i<UpdateBeliefsRaw.size();i++)
+	for (int i = 0; i < UpdateBeliefsRaw.size(); i++)
 	{
-		if(Beliefs[i] != 0 || UpdateBeliefsRaw[i] > 0)
+		if (Beliefs[i] != 0 || UpdateBeliefsRaw[i] > 0)
 			UpdateSum += UpdateBeliefsRaw[i];
 	}
 
 
 
-	for(int i=0; i<UpdateBeliefsRaw.size();i++)
+	for (int i = 0; i < UpdateBeliefsRaw.size(); i++)
 	{
 		UpdateBeliefs[i] = UpdateBeliefsRaw[i];
 
@@ -369,9 +411,9 @@ float ComputeInnerSimilarity(float b, std::vector<float> task_velocity)
 	std::vector<float> OtherTasks;
 	OtherTasks.resize(3);
 
-	OtherTasks[0] = DesiredVelocity[0] - b *task_velocity[0];
-	OtherTasks[1] = DesiredVelocity[1] - b *task_velocity[1];
-	OtherTasks[2] = DesiredVelocity[2] - b *task_velocity[2];
+	OtherTasks[0] = DesiredVelocity[0] - b * task_velocity[0];
+	OtherTasks[1] = DesiredVelocity[1] - b * task_velocity[1];
+	OtherTasks[2] = DesiredVelocity[2] - b * task_velocity[2];
 
 	float innerSimilarity = 0;
 
@@ -448,9 +490,10 @@ void DisplayInformation()
 //							 "\t b3= " << Beliefs[3] <<
 //							 "\t b4= " << Beliefs[4] << std::endl;
 
-	std::cout << "Real velocity = [" << RealVelocity[0] << " , " << RealVelocity[1] << " , " << RealVelocity[2] << "]" << std::endl;
+	std::cout << "Real    velocity = [" << RealVelocity[0] 	<< " , " << RealVelocity[1] << " , " << RealVelocity[2] << "]" << std::endl;
+	std::cout << "Adapted velocity = [" << DesiredVelocity[0] << " , " << DesiredVelocity[1] << " , " << DesiredVelocity[2] << "]" << std::endl;
+	std::cout << "Control forces   = [" << ControlWrench[0] << " , " << ControlWrench[1] << " , " << ControlWrench[2] << "]" << std::endl;
 
-	std::cout << "compute update for task 0 = " << UpdateBeliefsRaw[0] <<std::endl;
 
 
 	std::cout << "Task 0 : b =" << Beliefs[0] << "\t db_hat = " << UpdateBeliefsRaw[0] << "\t db = " << UpdateBeliefs[0] <<  std::endl;
@@ -458,6 +501,8 @@ void DisplayInformation()
 	std::cout << "Task 2 : b =" << Beliefs[2] << "\t db_hat = " << UpdateBeliefsRaw[2] << "\t db = " << UpdateBeliefs[2] <<  std::endl;
 	std::cout << "Task 3 : b =" << Beliefs[3] << "\t db_hat = " << UpdateBeliefsRaw[3] << "\t db = " << UpdateBeliefs[3] <<  std::endl;
 	std::cout << "Task 4 : b =" << Beliefs[4] << "\t db_hat = " << UpdateBeliefsRaw[4] << "\t db = " << UpdateBeliefs[4] <<  std::endl;
+
+
 
 
 
@@ -473,11 +518,23 @@ void DisplayInformation()
 // ---------------------------------------------------------------------------
 //------------------- Reading the real velocity of the robot -----------------
 // ---------------------------------------------------------------------------
-void updateRealVelocity(const geometry_msgs::TwistStamped::ConstPtr& msg)
+void updateRealVelocity(const cartesian_state_msgs::PoseTwist::ConstPtr& msg)
 {
-	RealVelocity[0] = msg->twist.linear.x;
-	RealVelocity[1] = msg->twist.linear.y;
-	RealVelocity[2] = msg->twist.linear.z;
+
+	// RealVelocity[0] = msg->twist.linear.x;
+	// RealVelocity[1] = msg->twist.linear.y;
+	// RealVelocity[2] = msg->twist.linear.z;
+
+	flag_realVelocity_newdata = true;
+
+}
+
+void updateRealVelocity_world(const geometry_msgs::Twist::ConstPtr& msg)
+{
+
+	RealVelocity[0] = msg->linear.x;
+	RealVelocity[1] = msg->linear.y;
+	RealVelocity[2] = msg->linear.z;
 
 	flag_realVelocity_newdata = true;
 
@@ -521,4 +578,33 @@ void UpdateTask4(const geometry_msgs::TwistStamped::ConstPtr& msg)
 	Task4_velocity[2] = msg->twist.linear.z;
 
 	flag_task4_newdata = true;
+}
+
+
+
+/*--------------------------------------------------------------------
+ * configCallback()
+ * Callback function for dynamic reconfigure server.
+ *------------------------------------------------------------------*/
+
+void configCallback(task_adaptation::task_adaptation_params &config, uint32_t level)
+{
+	// Set class variables to new values. They should match what is input at the dynamic reconfigure GUI.
+	std::string message = config.message.c_str();
+	int D_gain = config.D_gain;
+	int epsilon = config.D_gain;
+
+	ROS_INFO_STREAM("configCallback: received update! messge : " << message << "  D_gain = " << D_gain << "  espsilon = " << epsilon);
+
+}
+
+
+void UpdateParamCallback(const task_adaptation::task_adaptation_params::ConstPtr &msg)
+{
+	std::string message = msg->message;
+	int D_gain = msg->D_gain;
+	int epsilon = msg->epsilon;
+
+	ROS_INFO_STREAM("received update! messge : " << message << "  D_gain = " << D_gain << "  espsilon = " << epsilon);
+
 }

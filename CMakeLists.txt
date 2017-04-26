@@ -11,6 +11,9 @@ add_definitions (-DLINUX)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
+  cartesian_state_msgs
+  rospy
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -33,7 +36,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## * In the file package.xml:
 ##   * add a build_depend tag for "message_generation"
 ##   * add a build_depend and a run_depend tag for each package in MSG_DEP_SET
-##   * If MSG_DEP_SET isn't empty the following dependency has been pulled in
+##   * If MSG_DEP_SET isn't empty the following dependency` has been pulled in
 ##     but can be declared for certainty nonetheless:
 ##     * add a run_depend tag for "message_runtime"
 ## * In this file (CMakeLists.txt):
@@ -53,6 +56,12 @@ find_package(catkin REQUIRED COMPONENTS
 #   Message2.msg
 # )
 
+add_message_files(
+  FILES
+  task_adaptation_params.msg
+)
+
+
 ## Generate services in the 'srv' folder
 # add_service_files(
 #   FILES
@@ -68,10 +77,10 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -105,9 +114,11 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES task_adaptation
-#  CATKIN_DEPENDS roscpp std_msgs
-#  DEPENDS system_lib
+  CATKIN_DEPENDS roscpp std_msgs cartesian_state_msgs message_runtime
+# DEPENDS system_lib
 )
+
+
 
 ###########
 ## Build ##
