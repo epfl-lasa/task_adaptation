@@ -11,7 +11,7 @@
 
 
 #include <dynamic_reconfigure/server.h>
-#include <task_adaptation/task_adaptation_params.h>
+#include <task_adaptation/task_adaptation_paramsConfig.h>
 // variables
 
 geometry_msgs::TwistStamped msgAdaptedVelocity;
@@ -48,9 +48,8 @@ std::vector<float> Beliefs;
 std::vector<float> UpdateBeliefsRaw;
 std::vector<float> UpdateBeliefs;
 
-double D_gain;
-double epsilon;
-
+double D_gain, D_gain_hack;
+double epsilon, epsilon_hack;
 
 
 
@@ -66,8 +65,8 @@ void UpdateTask2(const geometry_msgs::TwistStamped::ConstPtr& msg);
 void UpdateTask3(const geometry_msgs::TwistStamped::ConstPtr& msg);
 void UpdateTask4(const geometry_msgs::TwistStamped::ConstPtr& msg);
 
-void configCallback(task_adaptation::task_adaptation_params &config, uint32_t level);
-void UpdateParamCallback(const task_adaptation::task_adaptation_params::ConstPtr &msg);
+void configCallback(task_adaptation::task_adaptation_paramsConfig& config, uint32_t level);
+// void UpdateParamCallback(const task_adaptation::task_adaptation_params::ConstPtr _msg);
 
 
 
@@ -114,8 +113,8 @@ int main(int argc, char **argv)
 
 
 	Beliefs.resize(5);
-	Beliefs[0] = 0;
-	Beliefs[1] = 1;
+	Beliefs[0] = 1;
+	Beliefs[1] = 0;
 	Beliefs[2] = 0;
 	Beliefs[3] = 0;
 	Beliefs[4] = 0;
@@ -164,23 +163,26 @@ int main(int argc, char **argv)
 
 
 
-	D_gain  = 2;
-	epsilon = 0.01;
-
-
+	D_gain  = 8;
+	epsilon = 3;
+	epsilon_hack = epsilon;
+	D_gain_hack = D_gain;
 	// Initialize node parameters from launch file or command line.
 	// Use a private node handle so that multiple instances of the node can be run simultaneously
 	// while using different parameters.
-	std::string topic;
-	int rate;
-	ros::NodeHandle private_node_handle_("~");
-	private_node_handle_.param("rate", rate, int(40));
-	private_node_handle_.param("topic", topic, std::string("/TaskAdaptation/dynamic_params"));
-	ros::Subscriber sub_message = n.subscribe(topic.c_str(), 1000, UpdateParamCallback);
+	// std::string topic;
+	// int rate;
+	// ros::NodeHandle private_node_handle_("~");
+	// private_node_handle_.param("rate", rate, int(40));
+	// private_node_handle_.param("topic", topic, std::string("/TaskAdaptation/dynamic_params"));
+	// ros::Subscriber sub_message = n.subscribe(topic.c_str(), 1000, UpdateParamCallback);
 
+	dynamic_reconfigure::Server<task_adaptation::task_adaptation_paramsConfig> dynamic_srv;
+	dynamic_reconfigure::Server<task_adaptation::task_adaptation_paramsConfig>::CallbackType f;
+	f = boost::bind(&configCallback, _1, _2);
+  	dynamic_srv.setCallback(f);
 
-
-
+  	
 	ros::Rate loop_rate(1000);
 
 
@@ -205,7 +207,7 @@ int main(int argc, char **argv)
 		flagAdapt = flagAdapt && flag_task1_newdata && flag_task2_newdata;
 		flagAdapt = flagAdapt && flag_task3_newdata && flag_task4_newdata;
 
-		if (flagAdapt && 0)
+		if (flagAdapt && 1)
 		{
 
 			UpdateDesiredVelocity();
@@ -217,7 +219,7 @@ int main(int argc, char **argv)
 
 			for (int i = 0; i < Beliefs.size(); i++)
 			{
-				Beliefs[i] += epsilon * UpdateBeliefs[i];
+				Beliefs[i] += epsilon_hack * UpdateBeliefs[i];
 
 				if (Beliefs[i] > 1)
 					Beliefs[i] = 1;
@@ -225,6 +227,12 @@ int main(int argc, char **argv)
 				if (Beliefs[i] < 0)
 					Beliefs[i] = 0;
 			}
+
+			// if (Beliefs[0] > 0.5 )
+			// 	epsilon_hack = epsilon * 5;
+			// else
+			// 	epsilon_hack = epsilon;
+
 
 
 
@@ -253,24 +261,26 @@ int main(int argc, char **argv)
 		pub_adapted_velocity.publish(msgAdaptedVelocity);
 
 
+		D_gain_hack = (1 - Beliefs[0]) * D_gain;
 
-		ControlWrench[0] = -D_gain * (RealVelocity[0] - DesiredVelocity[0]);
-		ControlWrench[1] = -D_gain * (RealVelocity[1] - DesiredVelocity[1]);
-		ControlWrench[2] = -D_gain * (RealVelocity[2] - DesiredVelocity[2]);
 
-		if(ControlWrench[0] < -0.6)
-			ControlWrench[0] = -0.6;
-		if(ControlWrench[1] < -0.6)
-			ControlWrench[1] = -0.6;
-		if(ControlWrench[2] < -0.6)
-			ControlWrench[2] = -0.6;
+		ControlWrench[0] = -D_gain_hack * (RealVelocity[0] - DesiredVelocity[0]);
+		ControlWrench[1] = -D_gain_hack * (RealVelocity[1] - DesiredVelocity[1]);
+		ControlWrench[2] = -D_gain_hack * (RealVelocity[2] - DesiredVelocity[2]);
 
-		if(ControlWrench[0] > 0.6)
-			ControlWrench[0] = 0.6;
-		if(ControlWrench[1] > 0.6)
-			ControlWrench[1] = 0.6;
-		if(ControlWrench[2] > 0.6)
-			ControlWrench[2] = 0.6;
+		// if(ControlWrench[0] < -0.6)
+		// 	ControlWrench[0] = -0.6;
+		// if(ControlWrench[1] < -0.6)
+		// 	ControlWrench[1] = -0.6;
+		// if(ControlWrench[2] < -0.6)
+		// 	ControlWrench[2] = -0.6;
+
+		// if(ControlWrench[0] > 0.6)
+		// 	ControlWrench[0] = 0.6;
+		// if(ControlWrench[1] > 0.6)
+		// 	ControlWrench[1] = 0.6;
+		// if(ControlWrench[2] > 0.6)
+		// 	ControlWrench[2] = 0.6;
 
 
 		msgWrenchControl.header.stamp = ros::Time::now();
@@ -494,6 +504,7 @@ void DisplayInformation()
 	std::cout << "Adapted velocity = [" << DesiredVelocity[0] << " , " << DesiredVelocity[1] << " , " << DesiredVelocity[2] << "]" << std::endl;
 	std::cout << "Control forces   = [" << ControlWrench[0] << " , " << ControlWrench[1] << " , " << ControlWrench[2] << "]" << std::endl;
 
+	std::cout << "Adaptation rate  = " << epsilon_hack << " Control gain  = " << D_gain_hack << std::endl;
 
 
 	std::cout << "Task 0 : b =" << Beliefs[0] << "\t db_hat = " << UpdateBeliefsRaw[0] << "\t db = " << UpdateBeliefs[0] <<  std::endl;
@@ -587,7 +598,7 @@ void UpdateTask4(const geometry_msgs::TwistStamped::ConstPtr& msg)
  * Callback function for dynamic reconfigure server.
  *------------------------------------------------------------------*/
 
-void configCallback(task_adaptation::task_adaptation_params &config, uint32_t level)
+void configCallback(task_adaptation::task_adaptation_paramsConfig& config, uint32_t level)
 {
 	// Set class variables to new values. They should match what is input at the dynamic reconfigure GUI.
 	std::string message = config.message.c_str();
@@ -599,12 +610,12 @@ void configCallback(task_adaptation::task_adaptation_params &config, uint32_t le
 }
 
 
-void UpdateParamCallback(const task_adaptation::task_adaptation_params::ConstPtr &msg)
-{
-	std::string message = msg->message;
-	int D_gain = msg->D_gain;
-	int epsilon = msg->epsilon;
+// void UpdateParamCallback(const task_adaptation::task_adaptation_params::ConstPtr &msg)
+// {
+// 	std::string message = msg->message;
+// 	int D_gain = msg->D_gain;
+// 	int epsilon = msg->epsilon;
 
-	ROS_INFO_STREAM("received update! messge : " << message << "  D_gain = " << D_gain << "  espsilon = " << epsilon);
+// 	ROS_INFO_STREAM("received update! messge : " << message << "  D_gain = " << D_gain << "  espsilon = " << epsilon);
 
-}
+// }

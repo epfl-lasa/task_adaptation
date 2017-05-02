@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   cartesian_state_msgs
   rospy
   message_generation
+  dynamic_reconfigure
 )
 
 ## System dependencies are found with CMake's conventions
@@ -101,6 +102,8 @@ generate_messages(
 #   cfg/DynReconf1.cfg
 #   cfg/DynReconf2.cfg
 # )
+ generate_dynamic_reconfigure_options(cfg/task_adaptation_params.cfg)  
+
 
 ###################################
 ## catkin specific configuration ##
@@ -129,6 +132,7 @@ catkin_package(
 # include_directories(include)
 include_directories(
   ${catkin_INCLUDE_DIRS}
+  ${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake
 )
 
 ## Declare a C++ library
@@ -158,6 +162,8 @@ add_executable(testUnitaryTasks src/testUnitaryTasks.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(taskAdaptation  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
+
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
