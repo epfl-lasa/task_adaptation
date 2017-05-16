@@ -5,13 +5,16 @@ project(task_adaptation)
 add_definitions(-std=c++11)
 add_definitions (-DLINUX)
 
+# set(CMAKE_CXX_FLAGS "-O2 -O3 -std=c++11 -Wall")
+
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
-  cartesian_state_msgs
+  # cartesian_state_msgs
   rospy
   message_generation
   dynamic_reconfigure
@@ -132,6 +135,7 @@ catkin_package(
 # include_directories(include)
 include_directories(
   ${catkin_INCLUDE_DIRS}
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake
 )
 
@@ -153,6 +157,12 @@ include_directories(
 add_executable(taskAdaptation src/taskAdaptation.cpp)
 add_executable(testUnitaryTasks src/testUnitaryTasks.cpp)
 
+
+add_executable(task_adaptation_node
+                src/task_adaptation_node.cpp
+                src/TaskAdaptor.cpp
+                include/TaskAdaptor.h)
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -165,6 +175,8 @@ add_executable(testUnitaryTasks src/testUnitaryTasks.cpp)
 add_dependencies(taskAdaptation  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
 
 
+add_dependencies(task_adaptation_node  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
+
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
@@ -172,6 +184,9 @@ add_dependencies(taskAdaptation  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EX
 
 target_link_libraries(taskAdaptation ${catkin_LIBRARIES})
 target_link_libraries(testUnitaryTasks ${catkin_LIBRARIES})
+
+
+target_link_libraries(task_adaptation_node ${catkin_LIBRARIES})
 
 
 #############

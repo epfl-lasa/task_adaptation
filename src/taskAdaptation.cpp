@@ -7,7 +7,7 @@
 #include "geometry_msgs/TwistStamped.h"
 #include "geometry_msgs/WrenchStamped.h"
 
-#include "cartesian_state_msgs/PoseTwist.h"
+// #include "cartesian_state_msgs/PoseTwist.h"
 
 
 #include <dynamic_reconfigure/server.h>
@@ -16,7 +16,7 @@
 
 geometry_msgs::TwistStamped msgAdaptedVelocity;
 geometry_msgs::WrenchStamped msgWrenchControl;
-cartesian_state_msgs::PoseTwist msgPoseTwist;
+// cartesian_state_msgs::PoseTwist msgPoseTwist;
 
 
 
@@ -56,7 +56,7 @@ double epsilon, epsilon_hack;
 
 
 
-void updateRealVelocity(const cartesian_state_msgs::PoseTwist::ConstPtr& msg);
+void updateRealVelocity(const geometry_msgs::TwistStamped::ConstPtr& msg);
 void updateRealVelocity_world(const geometry_msgs::Twist::ConstPtr& msg);
 
 
@@ -529,7 +529,7 @@ void DisplayInformation()
 // ---------------------------------------------------------------------------
 //------------------- Reading the real velocity of the robot -----------------
 // ---------------------------------------------------------------------------
-void updateRealVelocity(const cartesian_state_msgs::PoseTwist::ConstPtr& msg)
+void updateRealVelocity(const geometry_msgs::TwistStamped::ConstPtr& msg)
 {
 
 	// RealVelocity[0] = msg->twist.linear.x;
