@@ -2,9 +2,6 @@
 #define TASKADAPTOR_H
 
 
-
-
-
 #include "ros/ros.h"
 
 #include "geometry_msgs/TwistStamped.h"
@@ -12,8 +9,6 @@
 
 #include <dynamic_reconfigure/server.h>
 #include <task_adaptation/task_adaptation_paramsConfig.h>
-
-
 
 
 class TaskAdaptor {
@@ -25,9 +20,7 @@ private:
 	ros::Rate loop_rate_;
 	ros::Duration disp_rate_;
 
-
 	ros::Subscriber sub_realVelocity_;
-
 	ros::Subscriber sub_task1_;
 	ros::Subscriber sub_task2_;
 	ros::Subscriber sub_task3_;
@@ -49,42 +42,30 @@ private:
 	std::vector<float> DesiredVelocity_;
 	std::vector<float> ControlWrench_;
 
+	// the null primitive always commands zero velocity
+	const std::vector<float> Task0_velocity_ = {0,0,0};
 
-	std::vector<float> Task0_velocity_;
 	std::vector<float> Task1_velocity_;
 	std::vector<float> Task2_velocity_;
 	std::vector<float> Task3_velocity_;
 	std::vector<float> Task4_velocity_;
 
-	bool flag_realVelocity_newdata_;
-	bool flag_task1_newdata_;
-	bool flag_task2_newdata_;
-	bool flag_task3_newdata_;
-	bool flag_task4_newdata_;
-
-//float belief_task0;
-//float belief_task1;
-//float belief_task2;
-//float belief_task3;
-//float belief_task4;
-
+	// vectors to contain beliefs and their updates
+	std::vector<bool>  flag_newdata_; // 0 for realvelocity and i for task_i
 	std::vector<float> Beliefs_;
-
 	std::vector<float> UpdateBeliefsRaw_;
 	std::vector<float> UpdateBeliefs_;
 
-	double D_gain_, D_gain_hack_;
+	// adaptation gains
 	double epsilon_, epsilon_hack_;
 
-
-
-
+	// control gain for a simple velocity controller
+	double D_gain_, D_gain_hack_;
 
 
 public:
 
-	TaskAdaptor(ros::NodeHandle &n,
-	            double frequency);
+	TaskAdaptor(ros::NodeHandle &n, double frequency);
 
 	bool Init();
 
@@ -97,8 +78,6 @@ private:
 
 	bool InitROS();
 
-	void SetFlagsFalse();
-
 	bool CheckNewData();
 
 	void ComputeNewBeliefs();
@@ -110,6 +89,7 @@ private:
 	void PublishDesiredForce();
 
 	void updateRealVelocity(const geometry_msgs::TwistStamped::ConstPtr& msg);
+
 	void updateRealVelocity_world(const geometry_msgs::Twist::ConstPtr& msg);
 
 
@@ -118,42 +98,23 @@ private:
 	void UpdateTask3(const geometry_msgs::TwistStamped::ConstPtr& msg);
 	void UpdateTask4(const geometry_msgs::TwistStamped::ConstPtr& msg);
 
+
 	void DynCallback(task_adaptation::task_adaptation_paramsConfig& config, uint32_t level);
-// void UpdateParamCallback(const task_adaptation::task_adaptation_params::ConstPtr _msg);
-
-
+	// void UpdateParamCallback(const task_adaptation::task_adaptation_params::ConstPtr _msg);
 
 	void DisplayInformation();
-
 
 	void UpdateDesiredVelocity();
 
 	void RawAdaptation();
 
 	float ComputeInnerSimilarity(float b, std::vector<float> RealVelocity);
+
 	float ComputeOutterSimilarity(std::vector<float> RealVelocity);
-
-//float ComputeTotalInnerSimilarity();
-
 
 	void WinnerTakeAll();
 
-
-
+	//float ComputeTotalInnerSimilarity();
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #endif // TASKADAPTOR_H

@@ -30,7 +30,6 @@ void TaskAdaptor::Run() {
 	ros::Time::now();
 	ros::Time time_display = ros::Time::now() + disp_rate_;
 
-
 	while (nh_.ok()) {
 
 		if ( (ros::Time::now() - time_display).toSec() > 0  )
@@ -48,8 +47,6 @@ void TaskAdaptor::Run() {
 			WinnerTakeAll();
 
 			ComputeNewBeliefs();
-
-			SetFlagsFalse();
 		}
 
 		UpdateDesiredVelocity();
@@ -66,21 +63,10 @@ void TaskAdaptor::Run() {
 
 		loop_rate_.sleep();
 	}
-
 }
 
+
 bool TaskAdaptor::InitROS() {
-
-
-
-
-
-	//	ros::Publisher pub_velocity = n.advertise<geometry_msgs::TwistStamped>("TaskAdaptation/DesiredVelocity", 1000);
-	// ros::Publisher pub_adapted_velocity = nh_.advertise<geometry_msgs::TwistStamped>("/TaskAdaptation/adapted_velocity", 1);
-
-
-//	ros::Subscriber sub_realVelocity = n.subscribe("TaskAdaptation/RealVelocity", 1000, updateRealVelocity);
-
 
 	sub_realVelocity_ = nh_.subscribe("/TA/input", 1000,
 	                                  &TaskAdaptor::updateRealVelocity, this, ros::TransportHints().reliable().tcpNoDelay());
@@ -91,8 +77,7 @@ bool TaskAdaptor::InitROS() {
 	sub_task4_ = nh_.subscribe("/TA/DS4/Vel_des", 1000, &TaskAdaptor::UpdateTask4, this, ros::TransportHints().reliable().tcpNoDelay());
 
 	pub_adapted_velocity_ = nh_.advertise<geometry_msgs::TwistStamped>("/TA/adapted_velocity", 1);
-	pub_wrench_control_    = nh_.advertise<geometry_msgs::WrenchStamped>("/TA/D_controller", 1);
-
+	pub_wrench_control_   = nh_.advertise<geometry_msgs::WrenchStamped>("/TA/Controller/desired_force", 1);
 
 	dyn_rec_f_ = boost::bind(&TaskAdaptor::DynCallback, this, _1, _2);
 	dyn_rec_srv_.setCallback(dyn_rec_f_);
@@ -104,12 +89,10 @@ bool TaskAdaptor::InitROS() {
 		return true;
 	}
 	else {
-		ROS_ERROR("The ros node has a problem.");
+		ROS_ERROR("The ROS node has a problem.");
 		return false;
 	}
 }
-
-
 
 
 void TaskAdaptor::InitClassVariables() {
@@ -119,28 +102,17 @@ void TaskAdaptor::InitClassVariables() {
 	DesiredVelocity_.resize(3);
 	ControlWrench_.resize(6);
 
-	Task0_velocity_.resize(3);
 	Task1_velocity_.resize(3);
 	Task2_velocity_.resize(3);
 	Task3_velocity_.resize(3);
 	Task4_velocity_.resize(3);
 
-
-	// flag_realVelocity_newdata_ = false;
-	// flag_task1_newdata_ = false;
-	// flag_task2_newdata_ = false;
-	// flag_task3_newdata_ = false;
-	// flag_task4_newdata_ = false;
-
-	SetFlagsFalse();
-
 	Beliefs_.resize(5);
+	std::fill(Beliefs_.begin(), Beliefs_.end(), 0);
 	Beliefs_[0] = 1;
-	Beliefs_[1] = 0;
-	Beliefs_[2] = 0;
-	Beliefs_[3] = 0;
-	Beliefs_[4] = 0;
 
+	flag_newdata_.resize(5);
+	std::fill(flag_newdata_.begin(), flag_newdata_.end(), false);
 
 	UpdateBeliefsRaw_.resize(5);
 	std::fill(UpdateBeliefsRaw_.begin(), UpdateBeliefsRaw_.end(), 0);
@@ -148,38 +120,29 @@ void TaskAdaptor::InitClassVariables() {
 	UpdateBeliefs_.resize(5);
 	std::fill(UpdateBeliefs_.begin(), UpdateBeliefs_.end(), 0);
 
-	Task0_velocity_[0] = 0;
-	Task0_velocity_[1] = 0;
-	Task0_velocity_[2] = 0;
-
-
 	D_gain_  = 8;
 	epsilon_ = 3;
 	epsilon_hack_ = epsilon_;
 	D_gain_hack_ = D_gain_;
 
-
 }
 
-
-void TaskAdaptor::SetFlagsFalse() {
-
-	// setting the flags to false and wait for new data to be read
-	flag_realVelocity_newdata_ = false;
-	flag_task1_newdata_ = false;
-	flag_task2_newdata_ = false;
-	flag_task3_newdata_ = false;
-	flag_task4_newdata_ = false;
-}
 
 bool TaskAdaptor::CheckNewData() {
 
-	// check if all tasks/primitives and the robot are alive
-	bool flagAdapt = flag_realVelocity_newdata_;
-	flagAdapt = flagAdapt && flag_task1_newdata_ && flag_task2_newdata_;
-	flagAdapt = flagAdapt && flag_task3_newdata_ && flag_task4_newdata_;
+	bool flagAdapt = true;
 
-	return flagAdapt;
+	for (int i = 0; i < flag_newdata_.size(); i++) {
+		flagAdapt &= flag_newdata_[i];
+	}
+
+	if (flagAdapt) {
+		std::fill(flag_newdata_.begin(), flag_newdata_.end(), false);
+		return true;
+	}
+
+	return false;
+
 }
 
 void TaskAdaptor::ComputeNewBeliefs() {
@@ -227,8 +190,6 @@ void TaskAdaptor::ComputeDesiredForce() {
 
 void TaskAdaptor::PublishDesiredForce() {
 
-
-
 	msgWrenchControl_.header.stamp = ros::Time::now();
 	msgWrenchControl_.header.frame_id = "world"; // just for visualization
 	msgWrenchControl_.wrench.force.x = ControlWrench_[0];
@@ -239,8 +200,6 @@ void TaskAdaptor::PublishDesiredForce() {
 	msgWrenchControl_.wrench.torque.z = 0;
 
 	pub_wrench_control_.publish(msgWrenchControl_);
-
-
 
 }
 
@@ -256,7 +215,6 @@ void TaskAdaptor::PublishAdaptedVelocity() {
 }
 
 
-
 void TaskAdaptor::updateRealVelocity(const geometry_msgs::TwistStamped::ConstPtr& msg)
 {
 
@@ -264,15 +222,15 @@ void TaskAdaptor::updateRealVelocity(const geometry_msgs::TwistStamped::ConstPtr
 	RealVelocity_[1] = msg->twist.linear.y;
 	RealVelocity_[2] = msg->twist.linear.z;
 
-	flag_realVelocity_newdata_ = true;
+	flag_newdata_[0] = true;
 
 }
 
 
-
-// ---------------------------------------------------------------------------
-//------------------- Reading the new desired velocity of each task ----------
-// ---------------------------------------------------------------------------
+/*--------------------------------------------------------------------
+ * Reading the new desired velocity of each task
+ * and setting the flags to true for receiving the new data points
+ *------------------------------------------------------------------*/
 
 void TaskAdaptor::UpdateTask1(const geometry_msgs::TwistStamped::ConstPtr& msg)
 {
@@ -280,7 +238,7 @@ void TaskAdaptor::UpdateTask1(const geometry_msgs::TwistStamped::ConstPtr& msg)
 	Task1_velocity_[1] = msg->twist.linear.y;
 	Task1_velocity_[2] = msg->twist.linear.z;
 
-	flag_task1_newdata_ = true;
+	flag_newdata_[1] = true;
 }
 
 void TaskAdaptor::UpdateTask2(const geometry_msgs::TwistStamped::ConstPtr& msg)
@@ -289,7 +247,7 @@ void TaskAdaptor::UpdateTask2(const geometry_msgs::TwistStamped::ConstPtr& msg)
 	Task2_velocity_[1] = msg->twist.linear.y;
 	Task2_velocity_[2] = msg->twist.linear.z;
 
-	flag_task2_newdata_ = true;
+	flag_newdata_[2] = true;
 }
 
 void TaskAdaptor::UpdateTask3(const geometry_msgs::TwistStamped::ConstPtr& msg)
@@ -298,7 +256,7 @@ void TaskAdaptor::UpdateTask3(const geometry_msgs::TwistStamped::ConstPtr& msg)
 	Task3_velocity_[1] = msg->twist.linear.y;
 	Task3_velocity_[2] = msg->twist.linear.z;
 
-	flag_task3_newdata_ = true;
+	flag_newdata_[3] = true;
 }
 
 void TaskAdaptor::UpdateTask4(const geometry_msgs::TwistStamped::ConstPtr& msg)
@@ -307,9 +265,8 @@ void TaskAdaptor::UpdateTask4(const geometry_msgs::TwistStamped::ConstPtr& msg)
 	Task4_velocity_[1] = msg->twist.linear.y;
 	Task4_velocity_[2] = msg->twist.linear.z;
 
-	flag_task4_newdata_ = true;
+	flag_newdata_[4] = true;
 }
-
 
 
 /*--------------------------------------------------------------------
@@ -329,59 +286,6 @@ void TaskAdaptor::DynCallback(task_adaptation::task_adaptation_paramsConfig& con
 }
 
 
-
-// ---------------------------------------------------------------------------
-//------------------- Display relevant information in the console ------------
-// ---------------------------------------------------------------------------
-void TaskAdaptor::DisplayInformation()
-{
-	//std::cout << RealVelocity[0] << "\t" <<  RealVelocity[1] << "\t" << RealVelocity[2]  << std::endl;
-
-	std::cout << "Time = " << ros::Time::now() << std::endl;
-
-	if (!flag_realVelocity_newdata_)
-		std::cout << "Real velocity is not received " << std::endl;
-
-	if (!flag_task1_newdata_)
-		std::cout << "Task1 velocity is not received " << std::endl;
-
-	if (!flag_task2_newdata_)
-		std::cout << "Task2 velocity is not received " << std::endl;
-
-	if (!flag_task3_newdata_)
-		std::cout << "Task3 velocity is not received " << std::endl;
-
-	if (!flag_task4_newdata_)
-		std::cout << "Task4 velocity is not received " << std::endl;
-
-//	std::cout << "Beliefs are :  b0= " << Beliefs[0] <<
-//			                 "\t b1= " << Beliefs[1] <<
-//							 "\t b2= " << Beliefs[2] <<
-//							 "\t b3= " << Beliefs[3] <<
-//							 "\t b4= " << Beliefs[4] << std::endl;
-
-	std::cout << "Real    velocity = [" << RealVelocity_[0] 	<< " , " << RealVelocity_[1] << " , " << RealVelocity_[2] << "]" << std::endl;
-	std::cout << "Adapted velocity = [" << DesiredVelocity_[0] << " , " << DesiredVelocity_[1] << " , " << DesiredVelocity_[2] << "]" << std::endl;
-	std::cout << "Control forces   = [" << ControlWrench_[0] << " , " << ControlWrench_[1] << " , " << ControlWrench_[2] << "]" << std::endl;
-
-	std::cout << "Adaptation rate  = " << epsilon_hack_ << " Control gain  = " << D_gain_hack_ << std::endl;
-
-
-	std::cout << "Task 0 : b =" << Beliefs_[0] << "\t db_hat = " << UpdateBeliefsRaw_[0] << "\t db = " << UpdateBeliefs_[0] <<  std::endl;
-	std::cout << "Task 1 : b =" << Beliefs_[1] << "\t db_hat = " << UpdateBeliefsRaw_[1] << "\t db = " << UpdateBeliefs_[1] <<  std::endl;
-	std::cout << "Task 2 : b =" << Beliefs_[2] << "\t db_hat = " << UpdateBeliefsRaw_[2] << "\t db = " << UpdateBeliefs_[2] <<  std::endl;
-	std::cout << "Task 3 : b =" << Beliefs_[3] << "\t db_hat = " << UpdateBeliefsRaw_[3] << "\t db = " << UpdateBeliefs_[3] <<  std::endl;
-	std::cout << "Task 4 : b =" << Beliefs_[4] << "\t db_hat = " << UpdateBeliefsRaw_[4] << "\t db = " << UpdateBeliefs_[4] <<  std::endl;
-
-
-
-
-
-	std::cout << "----------------------------------------------------- " << std::endl << std::endl;
-}
-
-
-
 void TaskAdaptor::UpdateDesiredVelocity()
 {
 	// starting to zero
@@ -396,9 +300,6 @@ void TaskAdaptor::UpdateDesiredVelocity()
 	}
 
 }
-
-
-
 
 
 // ---------------------------------------------------------------------------
@@ -421,10 +322,6 @@ void TaskAdaptor::RawAdaptation()
 
 	UpdateBeliefsRaw_[4] -= ComputeOutterSimilarity(Task4_velocity_);
 	UpdateBeliefsRaw_[4] -= 2 * ComputeInnerSimilarity(Beliefs_[4], Task4_velocity_);
-
-
-
-
 
 	UpdateBeliefsRaw_[0] -= ComputeOutterSimilarity(Task0_velocity_);
 //	UpdateBeliefsRaw[0] += 2 * Beliefs[0] * .03;
@@ -460,53 +357,50 @@ void TaskAdaptor::WinnerTakeAll()
 	if (Beliefs_[winner_index] == 1)
 		return;
 
-
 	int runnerUp_index = 0;
-	if (winner_index == 0)
+
+	if (winner_index == 0) {
 		runnerUp_index = 1;
+	}
 
 	for (int i = 0; i < UpdateBeliefsRaw_.size(); i++)
 	{
-		if (i ==  winner_index)
+		if (i ==  winner_index) {
 			continue;
+		}
 
-		if (UpdateBeliefsRaw_[i] > UpdateBeliefsRaw_[runnerUp_index])
+		if (UpdateBeliefsRaw_[i] > UpdateBeliefsRaw_[runnerUp_index]) {
 			runnerUp_index = i;
+		}
 	}
 
 	// computing the middle point and removing form all raw updates
 	float offset = 0.5 * (UpdateBeliefsRaw_[winner_index] + UpdateBeliefsRaw_[runnerUp_index]);
 
-	for (int i = 0; i < UpdateBeliefsRaw_.size(); i++)
+	for (int i = 0; i < UpdateBeliefsRaw_.size(); i++) {
 		UpdateBeliefsRaw_[i] -= offset;
+	}
 
 
 	// computing the sum of updates and setting to zero for active one so we keep the sum beliefs at 1.
 	float UpdateSum = 0;
 
-	for (int i = 0; i < UpdateBeliefsRaw_.size(); i++)
-	{
+	for (int i = 0; i < UpdateBeliefsRaw_.size(); i++) {
 		if (Beliefs_[i] != 0 || UpdateBeliefsRaw_[i] > 0)
 			UpdateSum += UpdateBeliefsRaw_[i];
 	}
 
-
-
-	for (int i = 0; i < UpdateBeliefsRaw_.size(); i++)
-	{
+	for (int i = 0; i < UpdateBeliefsRaw_.size(); i++) 	{
 		UpdateBeliefs_[i] = UpdateBeliefsRaw_[i];
-
 	}
 
 	UpdateBeliefs_[winner_index] -= UpdateSum;
 
-
 }
 
 
+float TaskAdaptor::ComputeInnerSimilarity(float b, std::vector<float> task_velocity) {
 
-float TaskAdaptor::ComputeInnerSimilarity(float b, std::vector<float> task_velocity)
-{
 	std::vector<float> OtherTasks;
 	OtherTasks.resize(3);
 
@@ -520,14 +414,12 @@ float TaskAdaptor::ComputeInnerSimilarity(float b, std::vector<float> task_veloc
 	innerSimilarity += OtherTasks[1] * task_velocity[1];
 	innerSimilarity += OtherTasks[2] * task_velocity[2];
 
-
 	return innerSimilarity;
 
 }
 
 
-float TaskAdaptor::ComputeOutterSimilarity(std::vector<float> task_velocity)
-{
+float TaskAdaptor::ComputeOutterSimilarity(std::vector<float> task_velocity) {
 
 	float outterSimiliary = 0;
 
@@ -538,3 +430,50 @@ float TaskAdaptor::ComputeOutterSimilarity(std::vector<float> task_velocity)
 	return outterSimiliary;
 }
 
+
+/*--------------------------------------------------------------------
+ * Display relevant information in the console
+ *------------------------------------------------------------------*/
+
+void TaskAdaptor::DisplayInformation()
+{
+	//std::cout << RealVelocity[0] << "\t" <<  RealVelocity[1] << "\t" << RealVelocity[2]  << std::endl;
+
+	std::cout << "Time = " << ros::Time::now() << std::endl;
+
+	if (!flag_newdata_[0])
+		std::cout << "Real velocity is not received " << std::endl;
+
+	if (!flag_newdata_[1])
+		std::cout << "Task1 velocity is not received " << std::endl;
+
+	if (!flag_newdata_[2])
+		std::cout << "Task2 velocity is not received " << std::endl;
+
+	if (!flag_newdata_[3])
+		std::cout << "Task3 velocity is not received " << std::endl;
+
+	if (!flag_newdata_[4])
+		std::cout << "Task4 velocity is not received " << std::endl;
+
+//	std::cout << "Beliefs are :  b0= " << Beliefs[0] <<
+//			                 "\t b1= " << Beliefs[1] <<
+//							 "\t b2= " << Beliefs[2] <<
+//							 "\t b3= " << Beliefs[3] <<
+//							 "\t b4= " << Beliefs[4] << std::endl;
+
+	std::cout << "Real    velocity = [" << RealVelocity_[0] 	<< " , " << RealVelocity_[1] << " , " << RealVelocity_[2] << "]" << std::endl;
+	std::cout << "Adapted velocity = [" << DesiredVelocity_[0] << " , " << DesiredVelocity_[1] << " , " << DesiredVelocity_[2] << "]" << std::endl;
+	std::cout << "Control forces   = [" << ControlWrench_[0] << " , " << ControlWrench_[1] << " , " << ControlWrench_[2] << "]" << std::endl;
+
+	std::cout << "Adaptation rate  = " << epsilon_hack_ << " Control gain  = " << D_gain_hack_ << std::endl;
+
+
+	std::cout << "Task 0 : b =" << Beliefs_[0] << "\t db_hat = " << UpdateBeliefsRaw_[0] << "\t db = " << UpdateBeliefs_[0] <<  std::endl;
+	std::cout << "Task 1 : b =" << Beliefs_[1] << "\t db_hat = " << UpdateBeliefsRaw_[1] << "\t db = " << UpdateBeliefs_[1] <<  std::endl;
+	std::cout << "Task 2 : b =" << Beliefs_[2] << "\t db_hat = " << UpdateBeliefsRaw_[2] << "\t db = " << UpdateBeliefs_[2] <<  std::endl;
+	std::cout << "Task 3 : b =" << Beliefs_[3] << "\t db_hat = " << UpdateBeliefsRaw_[3] << "\t db = " << UpdateBeliefs_[3] <<  std::endl;
+	std::cout << "Task 4 : b =" << Beliefs_[4] << "\t db_hat = " << UpdateBeliefsRaw_[4] << "\t db = " << UpdateBeliefs_[4] <<  std::endl;
+
+	std::cout << "----------------------------------------------------- " << std::endl << std::endl;
+}
