@@ -36,6 +36,14 @@ private:
 	dynamic_reconfigure::Server<task_adaptation::task_adaptation_paramsConfig> dyn_rec_srv_;
 	dynamic_reconfigure::Server<task_adaptation::task_adaptation_paramsConfig>::CallbackType dyn_rec_f_;
 
+	// topic names
+	std::string topic_real_velocity_;
+	std::string topic_task1_velocity_;
+	std::string topic_task2_velocity_;
+	std::string topic_task3_velocity_;
+	std::string topic_task4_velocity_;
+	std::string topic_adapted_velocity_;
+	std::string topic_desired_force_;
 
 	// task adaptation variables
 	std::vector<float> RealVelocity_;
@@ -43,7 +51,7 @@ private:
 	std::vector<float> ControlWrench_;
 
 	// the null primitive always commands zero velocity
-	const std::vector<float> Task0_velocity_ = {0,0,0};
+	const std::vector<float> Task0_velocity_ = {0, 0, 0};
 
 	std::vector<float> Task1_velocity_;
 	std::vector<float> Task2_velocity_;
@@ -65,7 +73,15 @@ private:
 
 public:
 
-	TaskAdaptor(ros::NodeHandle &n, double frequency);
+	TaskAdaptor(ros::NodeHandle &n,
+	            double frequency,
+	            std::string topic_real_velocity,
+	            std::string topic_task1_velocity,
+	            std::string topic_task2_velocity,
+	            std::string topic_task3_velocity,
+	            std::string topic_task4_velocity,
+	            std::string topic_adapted_velocity,
+	            std::string topic_desired_force);
 
 	bool Init();
 

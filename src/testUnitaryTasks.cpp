@@ -19,6 +19,7 @@ int main(int argc, char **argv)
 	geometry_msgs::TwistStamped Task2_velocity;
 	geometry_msgs::TwistStamped Task3_velocity;
 	geometry_msgs::TwistStamped Task4_velocity;
+	geometry_msgs::TwistStamped Real_velocity;
 
 
 
@@ -26,15 +27,21 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "UnitaryTasks");
 	ros::NodeHandle n;
 
-	ros::Publisher pub_task1 = n.advertise<geometry_msgs::TwistStamped>("TaskAdaptation/task1/DesiredVelocity", 1000);
-	ros::Publisher pub_task2 = n.advertise<geometry_msgs::TwistStamped>("TaskAdaptation/task2/DesiredVelocity", 1000);
-	ros::Publisher pub_task3 = n.advertise<geometry_msgs::TwistStamped>("TaskAdaptation/task3/DesiredVelocity", 1000);
-	ros::Publisher pub_task4 = n.advertise<geometry_msgs::TwistStamped>("TaskAdaptation/task4/DesiredVelocity", 1000);
+	ros::Publisher pub_task1 = n.advertise<geometry_msgs::TwistStamped>("/testUnitary/task1/DesiredVelocity", 1000);
+	ros::Publisher pub_task2 = n.advertise<geometry_msgs::TwistStamped>("/testUnitary/task2/DesiredVelocity", 1000);
+	ros::Publisher pub_task3 = n.advertise<geometry_msgs::TwistStamped>("/testUnitary/task3/DesiredVelocity", 1000);
+	ros::Publisher pub_task4 = n.advertise<geometry_msgs::TwistStamped>("/testUnitary/task4/DesiredVelocity", 1000);
+
+	ros::Publisher pub_realVel = n.advertise<geometry_msgs::TwistStamped>("/testUnitary/real_velocity", 1000);
 
 	ros::Rate loop_rate(1000);
 
+	ros::Duration switch_rate(5);
 
 	ros::Time::now();
+
+	ros::Time time_switch = ros::Time::now() + switch_rate;
+
 
 	while (ros::ok())
 	{
@@ -68,6 +75,38 @@ int main(int argc, char **argv)
 		Task4_velocity.twist.linear.y = -0.14;
 		Task4_velocity.twist.linear.z = 0;
 		pub_task4.publish(Task4_velocity);
+
+
+		if ( (ros::Time::now() - time_switch).toSec() > 0  ) {
+
+			time_switch = ros::Time::now() + switch_rate;
+			int task_number = rand() % 4 + 1;
+
+			switch (task_number) {
+
+			case 1 :
+				Real_velocity = Task1_velocity;
+				break;
+
+			case 2 :
+				Real_velocity = Task2_velocity;
+				break;
+
+			case 3 :
+				Real_velocity = Task3_velocity;
+				break;
+
+			case 4 :
+				Real_velocity = Task4_velocity;
+				break;
+
+			}
+		}
+
+		Real_velocity.header.stamp = time_now;
+		pub_realVel.publish(Real_velocity);
+
+
 
 
 		ros::spinOnce();

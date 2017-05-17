@@ -2,13 +2,28 @@
 
 
 TaskAdaptor::TaskAdaptor(ros::NodeHandle &n,
-                         double frequency)
+                         double frequency,
+                         std::string topic_real_velocity,
+                         std::string topic_task1_velocity,
+                         std::string topic_task2_velocity,
+                         std::string topic_task3_velocity,
+                         std::string topic_task4_velocity,
+                         std::string topic_adapted_velocity,
+                         std::string topic_desired_force)
 	: nh_(n),
 	  loop_rate_(frequency),
-	  disp_rate_(0.4) {
+	  disp_rate_(0.4),
+	  topic_real_velocity_(topic_real_velocity),
+	  topic_task1_velocity_(topic_task1_velocity),
+	  topic_task2_velocity_(topic_task2_velocity),
+	  topic_task3_velocity_(topic_task3_velocity),
+	  topic_task4_velocity_(topic_task4_velocity),
+	  topic_adapted_velocity_(topic_adapted_velocity),
+	  topic_desired_force_(topic_desired_force) {
 
 	ROS_INFO_STREAM("Task adaptation node is created at: " << nh_.getNamespace() << " with freq: " << frequency << "Hz");
 }
+
 
 
 
@@ -68,16 +83,16 @@ void TaskAdaptor::Run() {
 
 bool TaskAdaptor::InitROS() {
 
-	sub_realVelocity_ = nh_.subscribe("/TA/input", 1000,
+	sub_realVelocity_ = nh_.subscribe(topic_real_velocity_, 1000,
 	                                  &TaskAdaptor::updateRealVelocity, this, ros::TransportHints().reliable().tcpNoDelay());
 
-	sub_task1_ = nh_.subscribe("/TA/DS1/Vel_des", 1000, &TaskAdaptor::UpdateTask1, this, ros::TransportHints().reliable().tcpNoDelay());
-	sub_task2_ = nh_.subscribe("/TA/DS2/Vel_des", 1000, &TaskAdaptor::UpdateTask2, this, ros::TransportHints().reliable().tcpNoDelay());
-	sub_task3_ = nh_.subscribe("/TA/DS3/Vel_des", 1000, &TaskAdaptor::UpdateTask3, this, ros::TransportHints().reliable().tcpNoDelay());
-	sub_task4_ = nh_.subscribe("/TA/DS4/Vel_des", 1000, &TaskAdaptor::UpdateTask4, this, ros::TransportHints().reliable().tcpNoDelay());
+	sub_task1_ = nh_.subscribe(topic_task1_velocity_, 1000, &TaskAdaptor::UpdateTask1, this, ros::TransportHints().reliable().tcpNoDelay());
+	sub_task2_ = nh_.subscribe(topic_task2_velocity_, 1000, &TaskAdaptor::UpdateTask2, this, ros::TransportHints().reliable().tcpNoDelay());
+	sub_task3_ = nh_.subscribe(topic_task3_velocity_, 1000, &TaskAdaptor::UpdateTask3, this, ros::TransportHints().reliable().tcpNoDelay());
+	sub_task4_ = nh_.subscribe(topic_task4_velocity_, 1000, &TaskAdaptor::UpdateTask4, this, ros::TransportHints().reliable().tcpNoDelay());
 
-	pub_adapted_velocity_ = nh_.advertise<geometry_msgs::TwistStamped>("/TA/adapted_velocity", 1);
-	pub_wrench_control_   = nh_.advertise<geometry_msgs::WrenchStamped>("/TA/Controller/desired_force", 1);
+	pub_adapted_velocity_ = nh_.advertise<geometry_msgs::TwistStamped>(topic_adapted_velocity_, 1);
+	pub_wrench_control_   = nh_.advertise<geometry_msgs::WrenchStamped>(topic_desired_force_, 1);
 
 	dyn_rec_f_ = boost::bind(&TaskAdaptor::DynCallback, this, _1, _2);
 	dyn_rec_srv_.setCallback(dyn_rec_f_);
