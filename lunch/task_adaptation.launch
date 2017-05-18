@@ -2,46 +2,46 @@
 <launch>
 
 
-    <param name="topic_real_velocity" value="/testUnitary/real_velocity"/>
+  <param name="topic_real_velocity" value="/testUnitary/real_velocity"/>
 
-    <param name="topic_task1_velocity" value="/testUnitary/task1/DesiredVelocity"/>
-    <param name="topic_task2_velocity" value="/testUnitary/task2/DesiredVelocity"/>
-    <param name="topic_task3_velocity" value="/testUnitary/task3/DesiredVelocity"/>
-    <param name="topic_task4_velocity" value="/testUnitary/task4/DesiredVelocity"/>
+  <param name="topic_task1_velocity" value="/testUnitary/task1/DesiredVelocity"/>
+  <param name="topic_task2_velocity" value="/testUnitary/task2/DesiredVelocity"/>
+  <param name="topic_task3_velocity" value="/testUnitary/task3/DesiredVelocity"/>
+  <param name="topic_task4_velocity" value="/testUnitary/task4/DesiredVelocity"/>
 
-    <param name="topic_adapted_velocity" value="/task_adaptation/adapted_velocity"/>
+  <param name="topic_adapted_velocity" value="/task_adaptation/adapted_velocity"/>
 
-    <param name="topic_desired_force" value="/task_adaptation/desired_force"/>
-
-
-    <!-- <node name="adaptation_node" pkg="task_adaptation" type="task_adaptation_node" output="screen"/> -->
-    <node name="adaptation_node" pkg="task_adaptation" type="twoTasks_adaptation_node" output="screen"/>
+  <param name="topic_desired_force" value="/task_adaptation/desired_force"/>
 
 
-
-    <node name="tasks_node" pkg="task_adaptation" type="testUnitaryTasks" output="screen"/>
+  <!-- <node name="adaptation_node" pkg="task_adaptation" type="task_adaptation_node" output="screen"/> -->
+  <node name="adaptation_node" pkg="task_adaptation" type="twoTasks_adaptation_node" output="screen"/>
 
 
 
+  <node name="tasks_node" pkg="task_adaptation" type="testUnitaryTasks" output="screen"/>
 
-# input_topic name should contatin: geometry_msgs::Pose
-# output_topic_name will write geometry_msgs::Twist
+
+
+
+  # input_topic name should contatin: geometry_msgs::Pose
+  # output_topic_name will write geometry_msgs::Twist
 
   
 
   <!--group ns="DS_2">
-  	<param name="input_topic_name" value="/real_position"/>
-  	<param name="output_topic_name" value="/ds2/desired_velocity"/>
-  	<param name="output_filtered_topic_name" value="/ds2/filter/desired_velocity"/>
-	<rosparam command="load" file="$(find ds_motion_generator)/config/DS1_params.yaml"/>
-	<node name="DS_2" pkg="ds_motion_generator" type="active_motionGenerator_node" output="screen"/>
-  </group-->
+    <param name="input_topic_name" value="/real_position"/>
+    <param name="output_topic_name" value="/ds2/desired_velocity"/>
+    <param name="output_filtered_topic_name" value="/ds2/filter/desired_velocity"/>
+  <rosparam command="load" file="$(find ds_motion_generator)/config/DS1_params.yaml"/>
+  <node name="DS_2" pkg="ds_motion_generator" type="active_motionGenerator_node" output="screen"/>
+</group-->
 
 
   <!--group ns="DS_2">
-  	<param name="gmm_path" value="$(find ds_motion_generator)/data/DS2"/>
-  	<param name="max_des_vel" value=".3"/>
-  	<node name="motionGenerator" pkg="ds_motion_generator" type="active_motionGenerator_node" output="screen"/>
+    <param name="gmm_path" value="$(find ds_motion_generator)/data/DS2"/>
+    <param name="max_des_vel" value=".3"/>
+    <node name="motionGenerator" pkg="ds_motion_generator" type="active_motionGenerator_node" output="screen"/>
   </group-->
 
 </launch>

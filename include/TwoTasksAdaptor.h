@@ -66,12 +66,12 @@ private:
 public:
 
 	TwoTasksAdaptor(ros::NodeHandle &n,
-	            double frequency,
-	            std::string topic_real_velocity,
-	            std::string topic_task1_velocity,
-	            std::string topic_task2_velocity,
-	            std::string topic_adapted_velocity,
-	            std::string topic_desired_force);
+	                double frequency,
+	                std::string topic_real_velocity,
+	                std::string topic_task1_velocity,
+	                std::string topic_task2_velocity,
+	                std::string topic_adapted_velocity,
+	                std::string topic_desired_force);
 
 	bool Init();
 
@@ -94,9 +94,10 @@ private:
 
 	void PublishDesiredForce();
 
-	void updateRealVelocity(const geometry_msgs::TwistStamped::ConstPtr& msg);
+	void updateRealVelocityStamped(const geometry_msgs::TwistStamped::ConstPtr& msg);
+	void updateRealVelocity(const geometry_msgs::Twist::ConstPtr& msg);
 
-	void updateRealVelocity_world(const geometry_msgs::Twist::ConstPtr& msg);
+	// void updateRealVelocity_world(const geometry_msgs::Twist::ConstPtr& msg);
 
 
 	void UpdateTask1(const geometry_msgs::TwistStamped::ConstPtr& msg);

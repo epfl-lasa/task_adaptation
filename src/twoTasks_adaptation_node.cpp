@@ -7,7 +7,7 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "task_adaptation_node");
 
   ros::NodeHandle nh;
-  double frequency = 250.0;
+  double frequency = 100.0;
 
   // Parameters
   std::string topic_real_velocity;

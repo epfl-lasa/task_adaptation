@@ -223,7 +223,7 @@ void TwoTasksAdaptor::PublishAdaptedVelocity() {
 }
 
 
-void TwoTasksAdaptor::updateRealVelocity(const geometry_msgs::TwistStamped::ConstPtr& msg)
+void TwoTasksAdaptor::updateRealVelocityStamped(const geometry_msgs::TwistStamped::ConstPtr& msg)
 {
 
 	RealVelocity_[0] = msg->twist.linear.x;
@@ -234,6 +234,16 @@ void TwoTasksAdaptor::updateRealVelocity(const geometry_msgs::TwistStamped::Cons
 
 }
 
+void TwoTasksAdaptor::updateRealVelocity(const geometry_msgs::Twist::ConstPtr& msg)
+{
+
+	RealVelocity_[0] = msg->linear.x;
+	RealVelocity_[1] = msg->linear.y;
+	RealVelocity_[2] = msg->linear.z;
+
+	flag_newdata_[0] = true;
+
+}
 
 /*--------------------------------------------------------------------
  * Reading the new desired velocity of each task
