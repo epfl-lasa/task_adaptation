@@ -601,11 +601,10 @@ void UpdateTask4(const geometry_msgs::TwistStamped::ConstPtr& msg)
 void configCallback(task_adaptation::task_adaptation_paramsConfig& config, uint32_t level)
 {
 	// Set class variables to new values. They should match what is input at the dynamic reconfigure GUI.
-	std::string message = config.message.c_str();
 	int D_gain = config.D_gain;
 	int epsilon = config.D_gain;
 
-	ROS_INFO_STREAM("configCallback: received update! messge : " << message << "  D_gain = " << D_gain << "  espsilon = " << epsilon);
+	ROS_INFO_STREAM("configCallback: received update!   D_gain = " << D_gain << "  espsilon = " << epsilon);
 
 }
 

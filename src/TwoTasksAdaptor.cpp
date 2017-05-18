@@ -267,12 +267,11 @@ void TwoTasksAdaptor::UpdateTask2(const geometry_msgs::TwistStamped::ConstPtr& m
 void TwoTasksAdaptor::DynCallback(task_adaptation::task_adaptation_paramsConfig& config, uint32_t level)
 {
 	// Set class variables to new values. They should match what is input at the dynamic reconfigure GUI.
-	std::string message = config.message.c_str();
 	D_gain_ = config.D_gain;
 	epsilon_ = config.epsilon;
 	epsilon_hack_ = epsilon_;
 
-	ROS_INFO_STREAM("configCallback: received update! messge : " << message << "  D_gain = " << D_gain_ << "  espsilon = " << epsilon_);
+	ROS_INFO_STREAM("configCallback: received update!  D_gain = " << D_gain_ << "  espsilon = " << epsilon_);
 
 }
 
