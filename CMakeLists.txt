@@ -163,6 +163,12 @@ add_executable(task_adaptation_node
                 src/TaskAdaptor.cpp
                 include/TaskAdaptor.h)
 
+
+add_executable(twoTasks_adaptation_node
+                src/twoTasks_adaptation_node.cpp
+                src/TwoTasksAdaptor.cpp
+                include/TwoTasksAdaptor.h)
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -177,6 +183,9 @@ add_dependencies(taskAdaptation  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EX
 
 add_dependencies(task_adaptation_node  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
 
+add_dependencies(twoTasks_adaptation_node  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
+
+
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
@@ -187,6 +196,8 @@ target_link_libraries(testUnitaryTasks ${catkin_LIBRARIES})
 
 
 target_link_libraries(task_adaptation_node ${catkin_LIBRARIES})
+
+target_link_libraries(twoTasks_adaptation_node ${catkin_LIBRARIES})
 
 
 #############
