@@ -86,7 +86,7 @@ bool TwoTasksAdaptor::InitROS() {
 	sub_task1_ = nh_.subscribe(topic_task1_velocity_, 1000, &TwoTasksAdaptor::UpdateTask1, this, ros::TransportHints().reliable().tcpNoDelay());
 	sub_task2_ = nh_.subscribe(topic_task2_velocity_, 1000, &TwoTasksAdaptor::UpdateTask2, this, ros::TransportHints().reliable().tcpNoDelay());
 
-	pub_adapted_velocity_ = nh_.advertise<geometry_msgs::TwistStamped>(topic_adapted_velocity_, 1);
+	pub_adapted_velocity_ = nh_.advertise<geometry_msgs::Twist>(topic_adapted_velocity_, 1);
 	pub_wrench_control_   = nh_.advertise<geometry_msgs::WrenchStamped>(topic_desired_force_, 1);
 
 	dyn_rec_f_ = boost::bind(&TwoTasksAdaptor::DynCallback, this, _1, _2);
@@ -212,7 +212,7 @@ void TwoTasksAdaptor::PublishDesiredForce() {
 }
 
 
-void TwoTasksAdaptor::PublishAdaptedVelocity() {
+void TwoTasksAdaptor::PublishAdaptedVelocityStamped() {
 
 	msgAdaptedVelocity_.header.stamp = ros::Time::now();
 	msgAdaptedVelocity_.twist.linear.x = DesiredVelocity_[0];
@@ -220,6 +220,17 @@ void TwoTasksAdaptor::PublishAdaptedVelocity() {
 	msgAdaptedVelocity_.twist.linear.z = DesiredVelocity_[2];
 
 	pub_adapted_velocity_.publish(msgAdaptedVelocity_);
+}
+
+void TwoTasksAdaptor::PublishAdaptedVelocity() {
+
+	geometry_msgs::Twist  msg;
+
+	msg.linear.x = DesiredVelocity_[0];
+	msg.linear.y = DesiredVelocity_[1];
+	msg.linear.z = DesiredVelocity_[2];
+
+	pub_adapted_velocity_.publish(msg);
 }
 
 
