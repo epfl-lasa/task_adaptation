@@ -1,0 +1,45 @@
+<?xml version="1.0" ?>
+<launch>
+
+
+  <arg name="topic_task1_velocity" default="/Task1/filter/desired_velocity"/>
+
+  <arg name="topic_task2_velocity" default="/Task2/filter/desired_velocity"/>
+
+  <arg name="topic_real_velocity" default="/lwr/ee_vel"/>
+
+  <!-- <arg name="topic_adapted_velocity" default="/task_adaptation/adapted_velocity"/> -->
+  <arg name="topic_adapted_velocity" default="/lwr/joint_controllers/passive_ds_command_vel"/>
+  <arg name="topic_desired_force" default="/task_adaptation/desired_force"/>
+
+
+  <group ns="Task1">
+    <param name="input_topic_name" value="/lwr/ee_pose"/>
+    <param name="output_topic_name" value="/task1/desired_velocity"/>
+    <param name="output_filtered_topic_name" value="$(arg topic_task1_velocity)"/>
+    <rosparam command="load" file="$(find ds_motion_generator)/config/Curve_go_left.yml"/>
+    <node name="ds_node" pkg="ds_motion_generator" type="active_motionGenerator_node" output="screen"/>
+  </group>
+
+  <group ns="Task2">
+    <param name="input_topic_name" value="/lwr/ee_pose"/>
+    <param name="output_topic_name" value="/task2/desired_velocity"/>
+    <param name="output_filtered_topic_name" value="$(arg topic_task2_velocity)"/>
+    <rosparam command="load" file="$(find ds_motion_generator)/config/swipe_right.yml"/>
+    <node name="ds_node" pkg="ds_motion_generator" type="swipe_motionGenerator_node" output="screen"/>
+  </group>
+
+
+
+  <group ns="task_adaptation">
+    <param name="topic_real_velocity"    value="$(arg topic_real_velocity)"/>
+    <param name="topic_task1_velocity"   value="$(arg topic_task1_velocity)"/>
+    <param name="topic_task2_velocity"   value="$(arg topic_task2_velocity)"/>
+    <param name="topic_adapted_velocity" value="$(arg topic_adapted_velocity)"/>
+    <param name="topic_desired_force"    value="$(arg topic_desired_force)"/>
+    <node name="TA_node" pkg="task_adaptation" type="twoTasks_adaptation_node" output="screen"/>
+  </group>
+
+
+
+</launch>
