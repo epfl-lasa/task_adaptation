@@ -329,21 +329,44 @@ void TaskAdaptor::RawAdaptation()
 {
 	std::fill(UpdateBeliefsRaw_.begin(), UpdateBeliefsRaw_.end(), 0);
 
+	double NullinnterSimilarity = 0;
+	double TempInnerSimilarity;
+
 
 	UpdateBeliefsRaw_[1] -= ComputeOutterSimilarity(Task1_velocity_);
-	UpdateBeliefsRaw_[1] -= 2 * ComputeInnerSimilarity(Beliefs_[1], Task1_velocity_);
+	TempInnerSimilarity   = 2 * ComputeInnerSimilarity(Beliefs_[1], Task1_velocity_);
+	UpdateBeliefsRaw_[1] -= TempInnerSimilarity;
+
+	if(TempInnerSimilarity > NullinnterSimilarity){
+		NullinnterSimilarity = TempInnerSimilarity;
+	}
 
 	UpdateBeliefsRaw_[2] -= ComputeOutterSimilarity(Task2_velocity_);
-	UpdateBeliefsRaw_[2] -= 2 * ComputeInnerSimilarity(Beliefs_[2], Task2_velocity_);
+	TempInnerSimilarity = 2 * ComputeInnerSimilarity(Beliefs_[2], Task2_velocity_);
+	UpdateBeliefsRaw_[2] -= TempInnerSimilarity;
+
+	if(TempInnerSimilarity > NullinnterSimilarity){
+		NullinnterSimilarity = TempInnerSimilarity;
+	}
 
 	UpdateBeliefsRaw_[3] -= ComputeOutterSimilarity(Task3_velocity_);
-	UpdateBeliefsRaw_[3] -= 2 * ComputeInnerSimilarity(Beliefs_[3], Task3_velocity_);
+	TempInnerSimilarity   = 2 * ComputeInnerSimilarity(Beliefs_[3], Task3_velocity_);
+	UpdateBeliefsRaw_[3] -= TempInnerSimilarity;
+
+	if(TempInnerSimilarity > NullinnterSimilarity){
+		NullinnterSimilarity = TempInnerSimilarity;
+	}
 
 	UpdateBeliefsRaw_[4] -= ComputeOutterSimilarity(Task4_velocity_);
-	UpdateBeliefsRaw_[4] -= 2 * ComputeInnerSimilarity(Beliefs_[4], Task4_velocity_);
+	TempInnerSimilarity   = 2 * ComputeInnerSimilarity(Beliefs_[4], Task4_velocity_);
+	UpdateBeliefsRaw_[4] -= TempInnerSimilarity;
+
+	if(TempInnerSimilarity > NullinnterSimilarity){
+		NullinnterSimilarity = TempInnerSimilarity;
+	}
 
 	UpdateBeliefsRaw_[0] -= ComputeOutterSimilarity(Task0_velocity_);
-//	UpdateBeliefsRaw[0] += 2 * Beliefs[0] * .03;
+	UpdateBeliefsRaw_[0] -= NullinnterSimilarity;
 
 //	UpdateBeliefsRaw[0] -= 0.25 * ComputeInnerSimilarity(Beliefs[1],Task1_velocity);
 //	UpdateBeliefsRaw[0] -= 0.25 * ComputeInnerSimilarity(Beliefs[2],Task2_velocity);
