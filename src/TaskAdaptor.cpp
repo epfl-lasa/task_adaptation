@@ -91,7 +91,7 @@ bool TaskAdaptor::InitROS() {
 	sub_task3_ = nh_.subscribe(topic_task3_velocity_, 1000, &TaskAdaptor::UpdateTask3, this, ros::TransportHints().reliable().tcpNoDelay());
 	sub_task4_ = nh_.subscribe(topic_task4_velocity_, 1000, &TaskAdaptor::UpdateTask4, this, ros::TransportHints().reliable().tcpNoDelay());
 
-	pub_adapted_velocity_ = nh_.advertise<geometry_msgs::TwistStamped>(topic_adapted_velocity_, 1);
+	pub_adapted_velocity_ = nh_.advertise<geometry_msgs::Twist>(topic_adapted_velocity_, 1);
 	pub_wrench_control_   = nh_.advertise<geometry_msgs::WrenchStamped>(topic_desired_force_, 1);
 
 	dyn_rec_f_ = boost::bind(&TaskAdaptor::DynCallback, this, _1, _2);
@@ -221,21 +221,26 @@ void TaskAdaptor::PublishDesiredForce() {
 
 void TaskAdaptor::PublishAdaptedVelocity() {
 
-	msgAdaptedVelocity_.header.stamp = ros::Time::now();
-	msgAdaptedVelocity_.twist.linear.x = DesiredVelocity_[0];
-	msgAdaptedVelocity_.twist.linear.y = DesiredVelocity_[1];
-	msgAdaptedVelocity_.twist.linear.z = DesiredVelocity_[2];
+	// msgAdaptedVelocity_.header.stamp = ros::Time::now();
+	// msgAdaptedVelocity_.twist.linear.x = DesiredVelocity_[0];
+	// msgAdaptedVelocity_.twist.linear.y = DesiredVelocity_[1];
+	// msgAdaptedVelocity_.twist.linear.z = DesiredVelocity_[2];
+
+
+	msgAdaptedVelocity_.linear.x = DesiredVelocity_[0];
+	msgAdaptedVelocity_.linear.y = DesiredVelocity_[1];
+	msgAdaptedVelocity_.linear.z = DesiredVelocity_[2];
 
 	pub_adapted_velocity_.publish(msgAdaptedVelocity_);
 }
 
 
-void TaskAdaptor::updateRealVelocity(const geometry_msgs::TwistStamped::ConstPtr& msg)
+void TaskAdaptor::updateRealVelocity(const geometry_msgs::Twist::ConstPtr& msg)
 {
 
-	RealVelocity_[0] = msg->twist.linear.x;
-	RealVelocity_[1] = msg->twist.linear.y;
-	RealVelocity_[2] = msg->twist.linear.z;
+	RealVelocity_[0] = msg->linear.x;
+	RealVelocity_[1] = msg->linear.y;
+	RealVelocity_[2] = msg->linear.z;
 
 	flag_newdata_[0] = true;
 

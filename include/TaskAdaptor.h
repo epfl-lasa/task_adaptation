@@ -4,8 +4,10 @@
 
 #include "ros/ros.h"
 
+#include "geometry_msgs/Twist.h"
 #include "geometry_msgs/TwistStamped.h"
 #include "geometry_msgs/WrenchStamped.h"
+
 
 #include <dynamic_reconfigure/server.h>
 #include <task_adaptation/task_adaptation_paramsConfig.h>
@@ -29,7 +31,7 @@ private:
 	ros::Publisher pub_adapted_velocity_;
 	ros::Publisher pub_wrench_control_;
 
-	geometry_msgs::TwistStamped  msgAdaptedVelocity_;
+	geometry_msgs::Twist  msgAdaptedVelocity_;
 	geometry_msgs::WrenchStamped msgWrenchControl_;
 
 	//dynamic reconfig settig
@@ -104,7 +106,7 @@ private:
 
 	void PublishDesiredForce();
 
-	void updateRealVelocity(const geometry_msgs::TwistStamped::ConstPtr& msg);
+	void updateRealVelocity(const geometry_msgs::Twist::ConstPtr& msg);
 
 	void updateRealVelocity_world(const geometry_msgs::Twist::ConstPtr& msg);
 

@@ -20,10 +20,6 @@ int main(int argc, char **argv)
 
 
 
-
-  std::vector<double> my_double_vector;
-
-
   if (!nh.getParam("topic_real_velocity", topic_real_velocity))
   {
     ROS_ERROR("Couldn't retrieve the topic name for the real velocity. ");
