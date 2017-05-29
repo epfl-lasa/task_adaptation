@@ -1,5 +1,5 @@
-SwipeDirection: 1
-SwipeVelocity: 10
+SwipeDirection: -1
+SwipeVelocity: 0.15
 OrthogonalDamping: 0.1
-OrthVelLim: 1.0
+OrthVelLim: 0.15
 SwipeTarget: [0 , -1.0 , 0.5]

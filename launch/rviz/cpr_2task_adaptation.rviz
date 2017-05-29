@@ -383,7 +383,7 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 2.70451e-43
+      Max Intensity: 0
       Min Color: 0; 0; 0
       Min Intensity: 0
       Name: LaserScan
@@ -413,7 +413,7 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 2.70451e-43
+      Max Intensity: 0
       Min Color: 0; 0; 0
       Min Intensity: 0
       Name: LaserScan
@@ -554,10 +554,10 @@ Visualization Manager:
         Z: -1.19209e-07
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.549797
+      Pitch: 0.499797
       Target Frame: ur5_arm_base
       Value: XYOrbit (rviz)
-      Yaw: 5.47949
+      Yaw: 5.92949
     Saved: ~
 Window Geometry:
   Displays:
