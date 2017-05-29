@@ -1,0 +1,61 @@
+<?xml version="1.0" ?>
+<launch>
+  <arg name="sim" default="true"/>
+  <arg name="world_name" default="$(find cpr_bringup)/worlds/empty.world"/>
+  <arg name="rviz_conf" default="$(find task_adaptation)/launch/rviz/cpr_2task_adaptation.rviz"/>
+
+
+  <!-- BRINGUP ROBOT -->
+  <include file="$(find cpr_bringup)/launch/cpr_bringup.launch">
+    <arg name="sim" value="$(arg sim)"/>
+    <arg name="world_name" value="$(arg world_name)"/>
+    <arg name="rviz_conf" value="$(arg rviz_conf)"/>
+  </include>
+
+  <!-- rqt_reconfigure if simulation -->
+  <group if="$(arg sim)">
+    <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" />
+  </group>
+
+  <include file="$(find admittance_control)/launch/admittance_controller.launch" />
+
+  <arg name="topic_task1_velocity" default="/Task1/filter/desired_velocity"/>
+  <arg name="topic_task2_velocity" default="/Task2/filter/desired_velocity"/>
+
+  <arg name="topic_real_velocity" default="/admittance_control/ee_twist_world"/>
+
+  <!-- <arg name="topic_adapted_velocity" default="/task_adaptation/adapted_velocity"/> -->
+  <arg name="topic_adapted_velocity" default="/lwr/joint_controllers/passive_ds_command_vel"/>
+  <arg name="topic_desired_force" default="/admittance_control/wrench_control"/>
+
+
+  <group ns="Task1">
+    <param name="input_topic_name" value="/admittance_control/ee_pose_world"/>
+    <param name="output_topic_name" value="/task1/desired_velocity"/>
+    <param name="output_filtered_topic_name" value="$(arg topic_task1_velocity)"/>
+    <rosparam command="load" file="$(find task_adaptation)/cfg/cpr_task1_params.yaml"/>
+    <node name="ds_node" pkg="ds_motion_generator" type="swipe_motionGenerator_node" output="screen"/>
+
+  </group>
+
+  <group ns="Task2">
+    <param name="input_topic_name" value="/admittance_control/ee_pose_world"/>
+    <param name="output_topic_name" value="/task2/desired_velocity"/>
+    <param name="output_filtered_topic_name" value="$(arg topic_task2_velocity)"/>
+    <rosparam command="load" file="$(find task_adaptation)/cfg/cpr_task2_params.yaml"/>
+    <node name="ds_node" pkg="ds_motion_generator" type="swipe_motionGenerator_node" output="screen"/>
+  </group>
+
+
+  <group ns="task_adaptation">
+    <param name="topic_real_velocity"    value="$(arg topic_real_velocity)"/>
+    <param name="topic_task1_velocity"   value="$(arg topic_task1_velocity)"/>
+    <param name="topic_task2_velocity"   value="$(arg topic_task2_velocity)"/>
+    <param name="topic_adapted_velocity" value="$(arg topic_adapted_velocity)"/>
+    <param name="topic_desired_force"    value="$(arg topic_desired_force)"/>
+    <node name="TA_node" pkg="task_adaptation" type="twoTasks_adaptation_node" output="screen"/>
+  </group>
+
+
+
+</launch>
