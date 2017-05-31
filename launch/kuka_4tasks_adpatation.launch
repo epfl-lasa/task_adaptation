@@ -15,7 +15,7 @@
 
   <group ns="Task1">
     <param name="input_topic_name" value="/lwr/ee_pose"/>
-    <param name="output_topic_name" value="/task1/desired_velocity"/>
+    <param name="output_topic_name" value="desired_velocity"/>
     <param name="output_filtered_topic_name" value="$(arg topic_task1_velocity)"/>
     <rosparam command="load" file="$(find ds_motion_generator)/config/Curve_go_left.yml"/>
     <node name="ds_node" pkg="ds_motion_generator" type="active_motionGenerator_node" output="screen"/>
@@ -24,7 +24,7 @@
 
   <group ns="Task2">
     <param name="input_topic_name" value="/lwr/ee_pose"/>
-    <param name="output_topic_name" value="/task2/desired_velocity"/>
+    <param name="output_topic_name" value="desired_velocity"/>
     <param name="output_filtered_topic_name" value="$(arg topic_task2_velocity)"/>
     <rosparam command="load" file="$(find ds_motion_generator)/config/swipe_right.yml"/>
     <node name="ds_node" pkg="ds_motion_generator" type="swipe_motionGenerator_node" output="screen"/>
@@ -33,7 +33,7 @@
 
   <group ns="Task3">
     <param name="input_topic_name" value="/lwr/ee_pose"/>
-    <param name="output_topic_name" value="/task3/desired_velocity"/>
+    <param name="output_topic_name" value="desired_velocity"/>
     <param name="output_filtered_topic_name" value="$(arg topic_task3_velocity)"/>
     <rosparam command="load" file="$(find ds_motion_generator)/config/cycle_cw.yml"/>
     <node name="ds_node" pkg="ds_motion_generator" type="cycle_motionGenerator_node" output="screen"/>
@@ -42,7 +42,7 @@
 
   <group ns="Task4">
     <param name="input_topic_name" value="/lwr/ee_pose"/>
-    <param name="output_topic_name" value="/task4/desired_velocity"/>
+    <param name="output_topic_name" value="desired_velocity"/>
     <param name="output_filtered_topic_name" value="$(arg topic_task4_velocity)"/>
     <rosparam command="load" file="$(find ds_motion_generator)/config/Curve_go_right.yml"/>
     <node name="ds_node" pkg="ds_motion_generator" type="active_motionGenerator_node" output="screen"/>
