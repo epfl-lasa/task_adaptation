@@ -62,7 +62,12 @@ void TaskAdaptor::Run() {
 			WinnerTakeAll();
 
 			ComputeNewBeliefs();
+
+			PublishBeliefs();
 		}
+
+		PublishBeliefs();
+
 
 		UpdateDesiredVelocity();
 
@@ -93,6 +98,7 @@ bool TaskAdaptor::InitROS() {
 
 	pub_adapted_velocity_ = nh_.advertise<geometry_msgs::Twist>(topic_adapted_velocity_, 1);
 	pub_wrench_control_   = nh_.advertise<geometry_msgs::WrenchStamped>(topic_desired_force_, 1);
+	pub_beliefs_ = nh_.advertise<std_msgs::Float64MultiArray>("beliefs", 1);
 
 	dyn_rec_f_ = boost::bind(&TaskAdaptor::DynCallback, this, _1, _2);
 	dyn_rec_srv_.setCallback(dyn_rec_f_);
@@ -177,6 +183,20 @@ void TaskAdaptor::ComputeNewBeliefs() {
 	// 	epsilon_hack = epsilon * 5;
 	// else
 	// 	epsilon_hack = epsilon;
+
+}
+
+void TaskAdaptor::PublishBeliefs() {
+
+	std_msgs::Float64MultiArray msg;
+
+	msg.data.clear();
+
+	for (int i = 0; i <= 4; i++) {
+		msg.data.push_back(Beliefs_[i]);
+	}
+
+	pub_beliefs_.publish(msg);
 
 }
 
@@ -337,7 +357,7 @@ void TaskAdaptor::RawAdaptation()
 	TempInnerSimilarity   = 2 * ComputeInnerSimilarity(Beliefs_[1], Task1_velocity_);
 	UpdateBeliefsRaw_[1] -= TempInnerSimilarity;
 
-	if(TempInnerSimilarity > NullinnterSimilarity){
+	if (TempInnerSimilarity > NullinnterSimilarity) {
 		NullinnterSimilarity = TempInnerSimilarity;
 	}
 
@@ -345,7 +365,7 @@ void TaskAdaptor::RawAdaptation()
 	TempInnerSimilarity = 2 * ComputeInnerSimilarity(Beliefs_[2], Task2_velocity_);
 	UpdateBeliefsRaw_[2] -= TempInnerSimilarity;
 
-	if(TempInnerSimilarity > NullinnterSimilarity){
+	if (TempInnerSimilarity > NullinnterSimilarity) {
 		NullinnterSimilarity = TempInnerSimilarity;
 	}
 
@@ -353,7 +373,7 @@ void TaskAdaptor::RawAdaptation()
 	TempInnerSimilarity   = 2 * ComputeInnerSimilarity(Beliefs_[3], Task3_velocity_);
 	UpdateBeliefsRaw_[3] -= TempInnerSimilarity;
 
-	if(TempInnerSimilarity > NullinnterSimilarity){
+	if (TempInnerSimilarity > NullinnterSimilarity) {
 		NullinnterSimilarity = TempInnerSimilarity;
 	}
 
@@ -361,7 +381,7 @@ void TaskAdaptor::RawAdaptation()
 	TempInnerSimilarity   = 2 * ComputeInnerSimilarity(Beliefs_[4], Task4_velocity_);
 	UpdateBeliefsRaw_[4] -= TempInnerSimilarity;
 
-	if(TempInnerSimilarity > NullinnterSimilarity){
+	if (TempInnerSimilarity > NullinnterSimilarity) {
 		NullinnterSimilarity = TempInnerSimilarity;
 	}
 
