@@ -157,6 +157,7 @@ include_directories(
 add_executable(taskAdaptation src/taskAdaptation.cpp)
 add_executable(testUnitaryTasks src/testUnitaryTasks.cpp)
 
+add_executable(belief_visualizer_node src/belief_visualizer_node.cpp)
 
 add_executable(task_adaptation_node
                 src/task_adaptation_node.cpp
@@ -180,6 +181,8 @@ add_executable(twoTasks_adaptation_node
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(taskAdaptation  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
 
+add_dependencies(belief_visualizer_node  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
+
 
 add_dependencies(task_adaptation_node  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
 
@@ -198,6 +201,9 @@ target_link_libraries(testUnitaryTasks ${catkin_LIBRARIES})
 target_link_libraries(task_adaptation_node ${catkin_LIBRARIES})
 
 target_link_libraries(twoTasks_adaptation_node ${catkin_LIBRARIES})
+
+target_link_libraries(belief_visualizer_node ${catkin_LIBRARIES})
+
 
 
 #############
