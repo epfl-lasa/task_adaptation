@@ -95,7 +95,7 @@ public:
 		marker_2_.color.a = 1.0f;
 
 		marker_3_.color.r = 0.0f;
-		marker_3_.color.g = 0.0f;
+		marker_3_.color.g = 0.3f;
 		marker_3_.color.b = 1.0f;
 		marker_3_.color.a = 1.0f;
 
