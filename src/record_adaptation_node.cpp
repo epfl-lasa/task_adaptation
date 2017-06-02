@@ -89,7 +89,7 @@ public:
 	void Initialize() {
 
 		// Creating a recording directory
-		std::string recPath_ = "./Recordings/";
+		std::string recPath_ = "/home/mahdi/catkin_ws/Recordings/";
 		mkdir(recPath_.c_str(), 0777);
 
 		// Creating a subdirectory for a specific subject
@@ -131,7 +131,7 @@ public:
 		file_forceReal_.open(recPathFile_forceReal);
 		file_forceReal_ << "Time" << "\t" << "x" << "\t" << "y" << "\t" << "z"
 		                << "\t" << "rx" << "\t" << "ry" << "\t" << "rz" << "\n";
-		sub_force_real_ = nh_.subscribe("/lwr/joint_controllers/ee_ft" , 1000, &AdaptationRecorder::GetForceReal, this);
+		sub_force_real_ = nh_.subscribe("/lwr/ee_ft" , 1000, &AdaptationRecorder::GetForceReal, this);
 
 
 		string recPathFile_velocityDesired = recPath_ + "/velocity_desired.txt";
@@ -149,7 +149,7 @@ public:
 		file_forceDesired_.open(recPathFile_forceDesired);
 		file_forceDesired_ << "Time" << "\t" << "x" << "\t" << "y" << "\t" << "z"
 		                   << "\t" << "rx" << "\t" << "ry" << "\t" << "rz" << "\n";
-		sub_force_desired_ = nh_.subscribe("/lwr/joint_controllers/force_desired" , 1000, &AdaptationRecorder::GetForceDesired, this);
+		sub_force_desired_ = nh_.subscribe("/lwr/joint_controllers/F_ee" , 1000, &AdaptationRecorder::GetForceDesired, this);
 
 
 		// file_control_gains_ : I will implement this later if needed
@@ -276,15 +276,15 @@ public:
 		                          << msg->w 	<< "\n";
 	}
 
-	void GetForceDesired(const geometry_msgs::WrenchStamped::ConstPtr& msg)
+	void GetForceDesired(const std_msgs::Float64MultiArray::ConstPtr& msg)
 	{
 		file_forceDesired_  << ros::Time::now()	<< "\t"
-		                    << msg->wrench.force.x 	<< "\t"
-		                    << msg->wrench.force.y 	<< "\t"
-		                    << msg->wrench.force.z 	<< "\t"
-		                    << msg->wrench.torque.x	<< "\t"
-		                    << msg->wrench.torque.y	<< "\t"
-		                    << msg->wrench.torque.z	<< "\n";
+		                    << msg->data[0] << "\t"
+		                    << msg->data[1] << "\t"
+		                    << msg->data[2] << "\t"
+		                    << msg->data[3]	<< "\t"
+		                    << msg->data[4]	<< "\t"
+		                    << msg->data[5]	<< "\n";
 	}
 
 	void GetTask1Velocity(const geometry_msgs::TwistStamped::ConstPtr& msg)
