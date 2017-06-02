@@ -73,7 +73,7 @@ void TaskAdaptor::Run() {
 
 		PublishAdaptedVelocity();
 
-		D_gain_hack_ = (1 - Beliefs_[0]) * D_gain_;
+		// D_gain_hack_ = (1 - Beliefs_[0]) * D_gain_;
 
 		ComputeDesiredForce();
 
@@ -141,10 +141,10 @@ void TaskAdaptor::InitClassVariables() {
 	UpdateBeliefs_.resize(5);
 	std::fill(UpdateBeliefs_.begin(), UpdateBeliefs_.end(), 0);
 
-	D_gain_  = 8;
-	epsilon_ = 3;
-	epsilon_hack_ = epsilon_;
-	D_gain_hack_ = D_gain_;
+	D_gain_  = 0;
+	epsilon_ = 0;
+	// epsilon_hack_ = epsilon_;
+	// D_gain_hack_ = D_gain_;
 
 }
 
@@ -170,7 +170,7 @@ void TaskAdaptor::ComputeNewBeliefs() {
 
 	for (int i = 0; i < Beliefs_.size(); i++)
 	{
-		Beliefs_[i] += epsilon_hack_ * UpdateBeliefs_[i];
+		Beliefs_[i] += epsilon_ * UpdateBeliefs_[i];
 
 		if (Beliefs_[i] > 1)
 			Beliefs_[i] = 1;
@@ -204,9 +204,9 @@ void TaskAdaptor::PublishBeliefs() {
 void TaskAdaptor::ComputeDesiredForce() {
 
 
-	ControlWrench_[0] = -D_gain_hack_ * (RealVelocity_[0] - DesiredVelocity_[0]);
-	ControlWrench_[1] = -D_gain_hack_ * (RealVelocity_[1] - DesiredVelocity_[1]);
-	ControlWrench_[2] = -D_gain_hack_ * (RealVelocity_[2] - DesiredVelocity_[2]);
+	ControlWrench_[0] = -D_gain_ * (RealVelocity_[0] - DesiredVelocity_[0]);
+	ControlWrench_[1] = -D_gain_ * (RealVelocity_[1] - DesiredVelocity_[1]);
+	ControlWrench_[2] = -D_gain_ * (RealVelocity_[2] - DesiredVelocity_[2]);
 
 	// if(ControlWrench[0] < -0.6)
 	// 	ControlWrench[0] = -0.6;
@@ -317,10 +317,10 @@ void TaskAdaptor::UpdateTask4(const geometry_msgs::TwistStamped::ConstPtr& msg)
 void TaskAdaptor::DynCallback(task_adaptation::task_adaptation_paramsConfig& config, uint32_t level)
 {
 	// Set class variables to new values. They should match what is input at the dynamic reconfigure GUI.
-	double D_gain = config.D_gain;
-	double epsilon = config.D_gain;
+	D_gain_ = config.D_gain;
+	epsilon_ = config.epsilon;
 
-	ROS_INFO_STREAM("configCallback: received update! D_gain = " << D_gain << "  espsilon = " << epsilon);
+	ROS_INFO_STREAM("configCallback: received update! D_gain = " << D_gain_ << "  espsilon = " << epsilon_ );
 
 }
 
@@ -528,7 +528,7 @@ void TaskAdaptor::DisplayInformation()
 	std::cout << "Adapted velocity = [" << DesiredVelocity_[0] << " , " << DesiredVelocity_[1] << " , " << DesiredVelocity_[2] << "]" << std::endl;
 	std::cout << "Control forces   = [" << ControlWrench_[0] << " , " << ControlWrench_[1] << " , " << ControlWrench_[2] << "]" << std::endl;
 
-	std::cout << "Adaptation rate  = " << epsilon_hack_ << " Control gain  = " << D_gain_hack_ << std::endl;
+	std::cout << "Adaptation rate  = " << epsilon_ << " Control gain  = " << D_gain_ << std::endl;
 
 
 	std::cout << "Task 0 : b =" << Beliefs_[0] << "\t db_hat = " << UpdateBeliefsRaw_[0] << "\t db = " << UpdateBeliefs_[0] <<  std::endl;
