@@ -59,7 +59,19 @@
     <param name="topic_adapted_velocity" value="$(arg topic_adapted_velocity)"/>
     <param name="topic_desired_force"    value="$(arg topic_desired_force)"/>
     <node name="TA_node" pkg="task_adaptation" type="task_adaptation_node" output="screen"/>
+
+    <node name="TA_record" pkg="task_adaptation" type="record_adaptation_node" output="screen"/>
+
+    <node name="TA_vis" pkg="task_adaptation" type="belief_visualizer_node" output="screen"/>
+
+
   </group>
+
+  <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" />
+
+
+
+
 
 
 
