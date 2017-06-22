@@ -6,7 +6,7 @@
 
   <arg name="topic_task1_velocity" default="/Task1/filter/desired_velocity"/>
   <arg name="topic_task2_velocity" default="/Task2/filter/desired_velocity"/>
-  <arg name="topic_task3_velocity" default="/Task3/filter/desired_velocity"/>
+  <arg name="topic_task3_velocity" default="/Task3/desired_velocity"/>
   <arg name="topic_task4_velocity" default="/Task4/filter/desired_velocity"/>
 
   <arg name="topic_adapted_velocity" default="/lwr/joint_controllers/passive_ds_command_vel"/>
