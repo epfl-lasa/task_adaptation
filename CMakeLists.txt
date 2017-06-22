@@ -158,7 +158,9 @@ add_executable(taskAdaptation src/taskAdaptation.cpp)
 add_executable(testUnitaryTasks src/testUnitaryTasks.cpp)
 
 add_executable(belief_visualizer_node src/belief_visualizer_node.cpp)
+
 add_executable(record_adaptation_node src/record_adaptation_node.cpp)
+add_executable(cpr_record_adaptation_node src/cpr_record_adaptation_node.cpp)
 
 add_executable(task_adaptation_node
                 src/task_adaptation_node.cpp
@@ -184,6 +186,7 @@ add_dependencies(taskAdaptation  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EX
 
 add_dependencies(belief_visualizer_node  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
 add_dependencies(record_adaptation_node  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
+add_dependencies(cpr_record_adaptation_node  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
 
 
 
@@ -207,6 +210,7 @@ target_link_libraries(twoTasks_adaptation_node ${catkin_LIBRARIES})
 
 target_link_libraries(belief_visualizer_node ${catkin_LIBRARIES})
 target_link_libraries(record_adaptation_node ${catkin_LIBRARIES})
+target_link_libraries(cpr_record_adaptation_node ${catkin_LIBRARIES})
 
 
 
