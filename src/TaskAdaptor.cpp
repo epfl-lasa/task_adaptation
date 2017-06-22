@@ -388,6 +388,10 @@ void TaskAdaptor::RawAdaptation()
 	UpdateBeliefsRaw_[0] -= ComputeOutterSimilarity(Task0_velocity_);
 	UpdateBeliefsRaw_[0] -= NullinnterSimilarity;
 
+	if(Beliefs_[0] < 0.2){
+		UpdateBeliefsRaw_[0] -= 1000;
+	}
+
 //	UpdateBeliefsRaw[0] -= 0.25 * ComputeInnerSimilarity(Beliefs[1],Task1_velocity);
 //	UpdateBeliefsRaw[0] -= 0.25 * ComputeInnerSimilarity(Beliefs[2],Task2_velocity);
 //	UpdateBeliefsRaw[0] -= 0.25 * ComputeInnerSimilarity(Beliefs[3],Task3_velocity);
