@@ -179,6 +179,17 @@ void TaskAdaptor::ComputeNewBeliefs() {
 			Beliefs_[i] = 0;
 	}
 
+	double sum_b = 0;
+
+	for (int i = 0; i < Beliefs_.size(); i++){
+	 sum_b += Beliefs_[i];
+	}
+
+	for (int i = 0; i < Beliefs_.size(); i++){
+	 Beliefs_[i] /= sum_b;
+	}
+
+
 	// if (Beliefs[0] > 0.5 )
 	// 	epsilon_hack = epsilon * 5;
 	// else
