@@ -1,0 +1,85 @@
+<?xml version="1.0" ?>
+<launch>
+
+
+  <arg name="topic_real_position" default="/lwr/ee_pose"/>
+  <arg name="topic_real_velocity" default="/lwr/ee_vel"/>
+
+  <arg name="topic_task1_velocity" default="/Task1/filter/desired_velocity"/>
+  <arg name="topic_task2_velocity" default="/Task2/filter/desired_velocity"/>
+  <arg name="topic_task3_velocity" default="/Task3/filter/desired_velocity"/>
+  <arg name="topic_task4_velocity" default="/Task4/filter/desired_velocity"/>
+
+  <arg name="topic_adapted_velocity" default="/lwr/joint_controllers/passive_ds_command_vel"/>
+  <arg name="topic_desired_force" default="/task_adaptation/desired_force"/>
+
+
+
+  <group ns="Tasks">
+
+  <group ns="Task1">
+    <param name="input_topic_name" value="/lwr/ee_pose"/>
+    <param name="output_topic_name" value="desired_velocity"/>
+    <param name="output_filtered_topic_name" value="$(arg topic_task1_velocity)"/>
+    <rosparam command="load" file="$(find ds_motion_generator)/config/TL_att_1.yml"/>
+    <node name="ds_node" pkg="ds_motion_generator" type="active_motionGenerator_node" output="screen"/>
+  </group>
+
+
+  <group ns="Task2">
+    <param name="input_topic_name" value="/lwr/ee_pose"/>
+    <param name="output_topic_name" value="desired_velocity"/>
+    <param name="output_filtered_topic_name" value="$(arg topic_task2_velocity)"/>
+    <rosparam command="load" file="$(find ds_motion_generator)/config/TL_att_2.yml"/>
+    <node name="ds_node" pkg="ds_motion_generator" type="active_motionGenerator_node" output="screen"/>
+  </group>
+
+
+
+
+  <group ns="Task3">
+    <param name="input_topic_name" value="/lwr/ee_pose"/>
+    <param name="output_topic_name" value="desired_velocity"/>
+    <param name="output_filtered_topic_name" value="$(arg topic_task3_velocity)"/>
+    <rosparam command="load" file="$(find ds_motion_generator)/config/TL_att_3.yml"/>
+    <node name="ds_node" pkg="ds_motion_generator" type="active_motionGenerator_node" output="screen"/>
+  </group>
+
+
+  <group ns="Task4">
+    <param name="input_topic_name" value="/lwr/ee_pose"/>
+    <param name="output_topic_name" value="desired_velocity"/>
+    <param name="output_filtered_topic_name" value="$(arg topic_task4_velocity)"/>
+    <rosparam command="load" file="$(find ds_motion_generator)/config/TL_att_4.yml"/>
+    <node name="ds_node" pkg="ds_motion_generator" type="active_motionGenerator_node" output="screen"/>
+  </group>
+
+  </group>
+
+
+  <group ns="Learning">
+    <param name="topic_real_position"    value="$(arg topic_real_position)"/>
+    <param name="topic_real_velocity"    value="$(arg topic_real_velocity)"/>
+    <param name="topic_task1_velocity"   value="$(arg topic_task1_velocity)"/>
+    <param name="topic_task2_velocity"   value="$(arg topic_task2_velocity)"/>
+    <param name="topic_task3_velocity"   value="$(arg topic_task3_velocity)"/>
+    <param name="topic_task4_velocity"   value="$(arg topic_task4_velocity)"/>
+    <param name="topic_adapted_velocity" value="$(arg topic_adapted_velocity)"/>
+    <param name="topic_desired_force"    value="$(arg topic_desired_force)"/>
+
+    <rosparam command="load" file="$(find ds_motion_generator)/config/TL_limits.yml"/>
+
+    <node name="TL_node" pkg="task_adaptation" type="task_learning_node" output="screen"/>
+
+    <!-- <node name="TA_record" pkg="task_adaptation" type="record_adaptation_node" output="screen"/> -->
+
+    <!-- <node name="TA_vis" pkg="task_adaptation" type="belief_visualizer_node" output="screen"/> -->
+
+
+  </group>
+
+  <!-- <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" /> -->
+
+
+
+</launch>
