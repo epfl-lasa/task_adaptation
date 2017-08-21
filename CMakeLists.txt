@@ -105,7 +105,10 @@ generate_messages(
 #   cfg/DynReconf1.cfg
 #   cfg/DynReconf2.cfg
 # )
- generate_dynamic_reconfigure_options(cfg/task_adaptation_params.cfg)  
+generate_dynamic_reconfigure_options(
+  cfg/task_adaptation_params.cfg
+  cfg/task_learning_params.cfg
+)  
 
 
 ###################################
@@ -179,6 +182,13 @@ add_executable(task_learning_node
                 src/TaskLearner.cpp
                 include/TaskLearner.h)
 
+add_executable(task_learning_visualization 
+        src/learning_visualization_node.cpp
+        src/LearningVisualizer
+        include/LearningVisualizer.h)
+
+
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -198,6 +208,7 @@ add_dependencies(cpr_record_adaptation_node  ${${PROJECT_NAME}_EXPORTED_TARGETS}
 
 add_dependencies(task_adaptation_node  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
 add_dependencies(task_learning_node    ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
+add_dependencies(task_learning_visualization    ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
 
 add_dependencies(twoTasks_adaptation_node  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
 
@@ -213,6 +224,7 @@ target_link_libraries(testUnitaryTasks ${catkin_LIBRARIES})
 
 target_link_libraries(task_adaptation_node ${catkin_LIBRARIES})
 target_link_libraries(task_learning_node   ${catkin_LIBRARIES})
+target_link_libraries(task_learning_visualization ${catkin_LIBRARIES})
 
 
 target_link_libraries(twoTasks_adaptation_node ${catkin_LIBRARIES})

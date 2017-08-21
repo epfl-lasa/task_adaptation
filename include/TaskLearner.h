@@ -12,8 +12,8 @@
 #include "std_msgs/Float64MultiArray.h"
 
 
-// #include <dynamic_reconfigure/server.h>
-// #include <task_adaptation/task_adaptation_paramsConfig.h>
+#include <dynamic_reconfigure/server.h>
+#include <task_adaptation/task_learning_paramsConfig.h>
 
 
 class TaskLearner {
@@ -34,15 +34,17 @@ private:
 
 	ros::Publisher pub_adapted_velocity_;
 	ros::Publisher pub_wrench_control_;
+
 	ros::Publisher pub_beliefs_;
+	ros::Publisher pub_betas_;
 
 
-// 	geometry_msgs::Twist  msgAdaptedVelocity_;
+	geometry_msgs::Twist  msgDesiredVelocity_;
 // 	geometry_msgs::WrenchStamped msgWrenchControl_;
 
 // 	//dynamic reconfig settig
-// 	dynamic_reconfigure::Server<task_adaptation::task_adaptation_paramsConfig> dyn_rec_srv_;
-// 	dynamic_reconfigure::Server<task_adaptation::task_adaptation_paramsConfig>::CallbackType dyn_rec_f_;
+	dynamic_reconfigure::Server<task_adaptation::task_learning_paramsConfig> dyn_rec_srv_;
+	dynamic_reconfigure::Server<task_adaptation::task_learning_paramsConfig>::CallbackType dyn_rec_f_;
 
 	// topic names
 	std::string topic_real_position_;
@@ -124,20 +126,23 @@ public:
 // private:
 
 	void InitClassVariables();
-
 	bool InitROS();
 
 	void ComputeActivation();
+	void ComputeBeliefs();
+
+	void ComputeDesiredVelocity();
+	void PublishDesiredVelocity();
 
 
 // 	bool CheckNewData();
 
 // 	void ComputeNewBeliefs();
 
-// 	void PublishBeliefs();
+	void PublishBeliefs();
+	void PublishBetas();
 
 
-// 	void PublishAdaptedVelocity();
 
 // 	void ComputeDesiredForce();
 
@@ -147,7 +152,7 @@ public:
 
 	void updateRealPosition(const geometry_msgs::Pose::ConstPtr& msg);
 
-// 	void updateRealVelocity_world(const geometry_msgs::Twist::ConstPtr& msg);
+	// void UpdateRealVelocity_world(const geometry_msgs::Twist::ConstPtr& msg);
 
 
 	void UpdateTask1(const geometry_msgs::TwistStamped::ConstPtr & msg);
@@ -156,18 +161,16 @@ public:
 	void UpdateTask4(const geometry_msgs::TwistStamped::ConstPtr & msg);
 
 
-// 	void DynCallback(task_adaptation::task_adaptation_paramsConfig& config, uint32_t level);
+	void DynCallback(task_adaptation::task_learning_paramsConfig& config, uint32_t level);
 // 	// void UpdateParamCallback(const task_adaptation::task_adaptation_params::ConstPtr _msg);
 
-// 	void DisplayInformation();
+	void DisplayInformation();
 
-// 	void UpdateDesiredVelocity();
 
 	void RawAdaptation();
 
 	void UpdateBeta();
 
-	void ComputeBeliefs();
 
 	float ComputeInnerSimilarity(float b, std::vector<float> RealVelocity);
 

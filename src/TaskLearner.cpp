@@ -59,67 +59,26 @@ void TaskLearner::Run() {
 
 	while (nh_.ok()) {
 
-// 		if ( (ros::Time::now() - time_display).toSec() > 0  )
-// 		{
-// 			DisplayInformation();
-// 			time_display = ros::Time::now() + disp_rate_;
-// 		}
-
-// 		if (CheckNewData() && 1) {
+		if ( (ros::Time::now() - time_display).toSec() > 0  ) {
+			time_display = ros::Time::now() + disp_rate_;
+			DisplayInformation();
+			PublishBetas();
+		}
 
 		ComputeActivation();
 
 		ComputeBeliefs();
-		// UpdateDesiredVelocity();
+		PublishBeliefs();
+
+		ComputeDesiredVelocity();
+		PublishDesiredVelocity();
 
 		RawAdaptation();
+		SimpleWinnerTakeAll();
 		UpdateBeta();
 
 
-
-		if ( (ros::Time::now() - time_display).toSec() > 0  )
-		{
-			time_display = ros::Time::now() + disp_rate_;
-
-			ROS_INFO_STREAM("Beliefs : " << Beliefs_[0] << " " << Beliefs_[1] << " " << Beliefs_[2] << " " << Beliefs_[3]);
-			ROS_INFO_STREAM("centroid : " << Centers_[0][0] << " " << Centers_[0][1] << " " << Centers_[0][2] );
-			ROS_INFO_STREAM("Real posisition: " << RealPosition_[0] << " " << RealPosition_[1] << " " << RealPosition_[2]);
-			ROS_INFO_STREAM("activations:" << activations_[0]);
-			ROS_INFO_STREAM("activations:" << activations_[1]);
-
-			ROS_INFO_STREAM("--------------");
-
-
-			// for (int i = 0; i < 1; i++) {
-			// std::cout << activations_[i] << " \t";
-			// }
-			// std::cout << std::endl;
-		}
-
-
-
-// 			WinnerTakeAll();
-
-// 			ComputeNewBeliefs();
-
-// 			PublishBeliefs();
-// 		}
-
-// 		PublishBeliefs();
-
-
-// 		UpdateDesiredVelocity();
-
-// 		PublishAdaptedVelocity();
-
-// 		// D_gain_hack_ = (1 - Beliefs_[0]) * D_gain_;
-
-// 		ComputeDesiredForce();
-
-// 		PublishDesiredForce();
-
 		ros::spinOnce();
-
 		loop_rate_.sleep();
 	}
 }
@@ -143,10 +102,12 @@ bool TaskLearner::InitROS() {
 
 	pub_adapted_velocity_ = nh_.advertise<geometry_msgs::Twist>(topic_adapted_velocity_, 1);
 	pub_wrench_control_   = nh_.advertise<geometry_msgs::WrenchStamped>(topic_desired_force_, 1);
-	pub_beliefs_ = nh_.advertise<std_msgs::Float64MultiArray>("beliefs", 1);
 
-	// dyn_rec_f_ = boost::bind(&TaskLearner::DynCallback, this, _1, _2);
-	// dyn_rec_srv_.setCallback(dyn_rec_f_);
+	pub_beliefs_ = nh_.advertise<std_msgs::Float64MultiArray>("beliefs", 1);
+	pub_betas_   = nh_.advertise<std_msgs::Float64MultiArray>("betas", 1);
+
+	dyn_rec_f_ = boost::bind(&TaskLearner::DynCallback, this, _1, _2);
+	dyn_rec_srv_.setCallback(dyn_rec_f_);
 
 
 	if (nh_.ok()) {
@@ -193,8 +154,9 @@ void TaskLearner::InitClassVariables() {
 	// epsilon_hack_ = epsilon_;
 	// D_gain_hack_ = D_gain_;
 
-	// intialize the centriods
 
+
+	// intialize the centriods
 	N_centeriods_ = N_grid_xyz_[0] * N_grid_xyz_[1] * N_grid_xyz_[2];
 
 	ROS_WARN_STREAM( N_centeriods_ << " centriods are being created");
@@ -220,6 +182,7 @@ void TaskLearner::InitClassVariables() {
 		}
 	}
 
+
 	activations_.resize(N_centeriods_);
 
 	for (int i = 0; i < N_centeriods_; i++) {
@@ -232,11 +195,13 @@ void TaskLearner::InitClassVariables() {
 
 	for (int i = 0; i < N_centeriods_; i++) {
 		Beta_[i].resize(4); // for 4 tasks
+		Beta_dot_[i].resize(4);
 		for (int j = 0; j < 4; j++) {
 			Beta_[i][j] = 0.25f; // equally between tasks
 			Beta_dot_[i][j] = 0.0f;
 		}
 	}
+
 
 	sigma2_ = 0.008;
 
@@ -304,6 +269,21 @@ void TaskLearner::ComputeBeliefs() {
 	}
 
 
+	// The sum is already close to 1, but we need to ensure it will stay close to 1
+	double sum_beliefs = 0;
+	for (int j = 0; j < 4 ; j++) {
+
+		// this is not suppose to happen, but only for reliability
+		if ( Beliefs_[j] < 0) {
+			ROS_WARN("Computation instability in Beliefs");
+			Beliefs_[j] = 0;
+		}
+		sum_beliefs += Beliefs_[j];
+	}
+
+	for (int j = 0; j < 4 ; j++) {
+		Beliefs_[j] /= sum_beliefs;
+	}
 }
 
 void TaskLearner::UpdateBeta() {
@@ -314,62 +294,55 @@ void TaskLearner::UpdateBeta() {
 		}
 	}
 
+	for (int i = 0; i < N_centeriods_; i++) {
+		double beta_sum = 0;
+		for (int j = 0; j < 4; j++) {
+			Beta_[i][j]  +=  epsilon_ *  Beta_dot_[i][j];
+
+			if (Beta_[i][j] < 0) {
+				Beta_[i][j] = 0;
+			}
+
+			beta_sum += Beta_[i][j];
+		}
+		for (int j = 0; j < 4; j++) {
+			Beta_[i][j]  /=  beta_sum;
+		}
+	}
 }
 
 
 
-// void TaskLearner::ComputeStateDependetBelief() {
+
+void TaskLearner::PublishBeliefs() {
+
+	std_msgs::Float64MultiArray msg;
+
+	msg.data.clear();
+
+	for (int i = 0; i < 4; i++) {
+		msg.data.push_back(Beliefs_[i]);
+	}
+
+	pub_beliefs_.publish(msg);
+
+}
 
 
+void TaskLearner::PublishBetas() {
 
-// }
+	std_msgs::Float64MultiArray msg;
 
+	msg.data.clear();
 
+	for (int i = 0; i < N_centeriods_; i++) {
+		for (int j = 0; j < 4; j++) {
+					msg.data.push_back(Beta_[i][j]);
+		}
+	}
 
-// void TaskLearner::ComputeNewBeliefs() {
-
-// 	for (int i = 0; i < Beliefs_.size(); i++)
-// 	{
-// 		Beliefs_[i] += epsilon_ * UpdateBeliefs_[i];
-
-// 		if (Beliefs_[i] > 1)
-// 			Beliefs_[i] = 1;
-
-// 		if (Beliefs_[i] < 0)
-// 			Beliefs_[i] = 0;
-// 	}
-
-// 	double sum_b = 0;
-
-// 	for (int i = 0; i < Beliefs_.size(); i++){
-// 	 sum_b += Beliefs_[i];
-// 	}
-
-// 	for (int i = 0; i < Beliefs_.size(); i++){
-// 	 Beliefs_[i] /= sum_b;
-// 	}
-
-
-// 	// if (Beliefs[0] > 0.5 )
-// 	// 	epsilon_hack = epsilon * 5;
-// 	// else
-// 	// 	epsilon_hack = epsilon;
-
-// }
-
-// void TaskLearner::PublishBeliefs() {
-
-// 	std_msgs::Float64MultiArray msg;
-
-// 	msg.data.clear();
-
-// 	for (int i = 0; i <= 4; i++) {
-// 		msg.data.push_back(Beliefs_[i]);
-// 	}
-
-// 	pub_beliefs_.publish(msg);
-
-// }
+	pub_betas_.publish(msg);
+}
 
 
 // void TaskLearner::ComputeDesiredForce() {
@@ -410,20 +383,16 @@ void TaskLearner::UpdateBeta() {
 // }
 
 
-// void TaskLearner::PublishAdaptedVelocity() {
-
-// 	// msgAdaptedVelocity_.header.stamp = ros::Time::now();
-// 	// msgAdaptedVelocity_.twist.linear.x = DesiredVelocity_[0];
-// 	// msgAdaptedVelocity_.twist.linear.y = DesiredVelocity_[1];
-// 	// msgAdaptedVelocity_.twist.linear.z = DesiredVelocity_[2];
 
 
-// 	msgAdaptedVelocity_.linear.x = DesiredVelocity_[0];
-// 	msgAdaptedVelocity_.linear.y = DesiredVelocity_[1];
-// 	msgAdaptedVelocity_.linear.z = DesiredVelocity_[2];
+void TaskLearner::updateRealPosition(const geometry_msgs::Pose::ConstPtr& msg) {
 
-// 	pub_adapted_velocity_.publish(msgAdaptedVelocity_);
-// }
+	RealPosition_[0] = msg->position.x;
+	RealPosition_[1] = msg->position.y;
+	RealPosition_[2] = msg->position.z;
+
+}
+
 
 
 void TaskLearner::updateRealVelocity(const geometry_msgs::Twist::ConstPtr& msg) {
@@ -435,13 +404,7 @@ void TaskLearner::updateRealVelocity(const geometry_msgs::Twist::ConstPtr& msg) 
 	flag_newdata_[0] = true;
 }
 
-void TaskLearner::updateRealPosition(const geometry_msgs::Pose::ConstPtr& msg) {
 
-	RealPosition_[0] = msg->position.x;
-	RealPosition_[1] = msg->position.y;
-	RealPosition_[2] = msg->position.z;
-	// flag_newdata_[0] = true;
-}
 
 
 /*--------------------------------------------------------------------
@@ -491,31 +454,46 @@ void TaskLearner::UpdateTask4(const geometry_msgs::TwistStamped::ConstPtr& msg)
 //  * Callback function for dynamic reconfigure server.
 //  *------------------------------------------------------------------
 
-// void TaskLearner::DynCallback(task_adaptation::task_adaptation_paramsConfig& config, uint32_t level)
-// {
-// 	// Set class variables to new values. They should match what is input at the dynamic reconfigure GUI.
-// 	D_gain_ = config.D_gain;
-// 	epsilon_ = config.epsilon;
+void TaskLearner::DynCallback(task_adaptation::task_learning_paramsConfig& config, uint32_t level)
+{
+	// Set class variables to new values. They should match what is input at the dynamic reconfigure GUI.
+	D_gain_ = config.D_gain;
+	epsilon_ = config.epsilon;
+	sigma2_ = config.sigma2;
 
-// 	ROS_INFO_STREAM("configCallback: received update! D_gain = " << D_gain_ << "  espsilon = " << epsilon_ );
+	ROS_INFO_STREAM("configCallback: received update! D_gain = " << D_gain_ << "  espsilon = " << epsilon_ << " Sigma2" << sigma2_);
 
-// }
+}
 
 
-// void TaskLearner::UpdateDesiredVelocity()
-// {
-// 	// starting to zero
-// 	std::fill(DesiredVelocity_.begin(), DesiredVelocity_.end(), 0);
+void TaskLearner::ComputeDesiredVelocity() {
 
-// 	for (int dim = 0 ; dim < 3 ; dim++)
-// 	{
-// 		DesiredVelocity_[dim] += Beliefs_[1] * Task1_velocity_[dim];
-// 		DesiredVelocity_[dim] += Beliefs_[2] * Task2_velocity_[dim];
-// 		DesiredVelocity_[dim] += Beliefs_[3] * Task3_velocity_[dim];
-// 		DesiredVelocity_[dim] += Beliefs_[4] * Task4_velocity_[dim];
-// 	}
+	// starting to zero
+	std::fill(DesiredVelocity_.begin(), DesiredVelocity_.end(), 0);
 
-// }
+	for (int dim = 0 ; dim < 3 ; dim++)
+	{
+		DesiredVelocity_[dim] += Beliefs_[0] * Task1_velocity_[dim];
+		DesiredVelocity_[dim] += Beliefs_[1] * Task2_velocity_[dim];
+		DesiredVelocity_[dim] += Beliefs_[2] * Task3_velocity_[dim];
+		DesiredVelocity_[dim] += Beliefs_[3] * Task4_velocity_[dim];
+	}
+}
+
+void TaskLearner::PublishDesiredVelocity() {
+
+	// msgDesiredVelocity_.header.stamp = ros::Time::now();
+	// msgDesiredVelocity_.twist.linear.x = DesiredVelocity_[0];
+	// msgDesiredVelocity_.twist.linear.y = DesiredVelocity_[1];
+	// msgDesiredVelocity_.twist.linear.z = DesiredVelocity_[2];
+
+
+	msgDesiredVelocity_.linear.x = DesiredVelocity_[0];
+	msgDesiredVelocity_.linear.y = DesiredVelocity_[1];
+	msgDesiredVelocity_.linear.z = DesiredVelocity_[2];
+
+	pub_adapted_velocity_.publish(msgDesiredVelocity_);
+}
 
 
 // // ---------------------------------------------------------------------------
@@ -717,49 +695,57 @@ float TaskLearner::ComputeOutterSimilarity(std::vector<float> task_velocity) {
 }
 
 
-// /*--------------------------------------------------------------------
-//  * Display relevant information in the console
-//  *------------------------------------------------------------------*/
+/*--------------------------------------------------------------------
+ * Display relevant information in the console
+ *------------------------------------------------------------------*/
 
-// void TaskLearner::DisplayInformation()
-// {
-// 	//std::cout << RealVelocity[0] << "\t" <<  RealVelocity[1] << "\t" << RealVelocity[2]  << std::endl;
+void TaskLearner::DisplayInformation()
+{
+	//std::cout << RealVelocity[0] << "\t" <<  RealVelocity[1] << "\t" << RealVelocity[2]  << std::endl;
 
-// 	std::cout << "Time = " << ros::Time::now() << std::endl;
+	std::cout << "Time = " << ros::Time::now() << std::endl;
 
-// 	if (!flag_newdata_[0])
-// 		std::cout << "Real velocity is not received " << std::endl;
+	// if (!flag_newdata_[0])
+	// 	std::cout << "Real velocity is not received " << std::endl;
 
-// 	if (!flag_newdata_[1])
-// 		std::cout << "Task1 velocity is not received " << std::endl;
+	// if (!flag_newdata_[1])
+	// 	std::cout << "Task1 velocity is not received " << std::endl;
 
-// 	if (!flag_newdata_[2])
-// 		std::cout << "Task2 velocity is not received " << std::endl;
+	// if (!flag_newdata_[2])
+	// 	std::cout << "Task2 velocity is not received " << std::endl;
 
-// 	if (!flag_newdata_[3])
-// 		std::cout << "Task3 velocity is not received " << std::endl;
+	// if (!flag_newdata_[3])
+	// 	std::cout << "Task3 velocity is not received " << std::endl;
 
-// 	if (!flag_newdata_[4])
-// 		std::cout << "Task4 velocity is not received " << std::endl;
+	// if (!flag_newdata_[4])
+	// 	std::cout << "Task4 velocity is not received " << std::endl;
 
-// //	std::cout << "Beliefs are :  b0= " << Beliefs[0] <<
-// //			                 "\t b1= " << Beliefs[1] <<
-// //							 "\t b2= " << Beliefs[2] <<
-// //							 "\t b3= " << Beliefs[3] <<
-// //							 "\t b4= " << Beliefs[4] << std::endl;
+//	std::cout << "Beliefs are :  b0= " << Beliefs[0] <<
+//			                 "\t b1= " << Beliefs[1] <<
+//							 "\t b2= " << Beliefs[2] <<
+//							 "\t b3= " << Beliefs[3] <<
+//							 "\t b4= " << Beliefs[4] << std::endl;
 
-// 	std::cout << "Real    velocity = [" << RealVelocity_[0] 	<< " , " << RealVelocity_[1] << " , " << RealVelocity_[2] << "]" << std::endl;
-// 	std::cout << "Adapted velocity = [" << DesiredVelocity_[0] << " , " << DesiredVelocity_[1] << " , " << DesiredVelocity_[2] << "]" << std::endl;
-// 	std::cout << "Control forces   = [" << ControlWrench_[0] << " , " << ControlWrench_[1] << " , " << ControlWrench_[2] << "]" << std::endl;
+	std::cout << "Real    velocity = [" << RealVelocity_[0] 	<< " , " << RealVelocity_[1] << " , " << RealVelocity_[2] << "]" << std::endl;
+	std::cout << "Adapted velocity = [" << DesiredVelocity_[0] << " , " << DesiredVelocity_[1] << " , " << DesiredVelocity_[2] << "]" << std::endl;
+	std::cout << "Control forces   = [" << ControlWrench_[0] << " , " << ControlWrench_[1] << " , " << ControlWrench_[2] << "]" << std::endl;
 
-// 	std::cout << "Adaptation rate  = " << epsilon_ << " Control gain  = " << D_gain_ << std::endl;
+	std::cout << "Adaptation rate  = " << epsilon_ << " Control gain  = " << D_gain_ << std::endl;
 
 
-// 	std::cout << "Task 0 : b =" << Beliefs_[0] << "\t db_hat = " << UpdateBeliefsRaw_[0] << "\t db = " << UpdateBeliefs_[0] <<  std::endl;
-// 	std::cout << "Task 1 : b =" << Beliefs_[1] << "\t db_hat = " << UpdateBeliefsRaw_[1] << "\t db = " << UpdateBeliefs_[1] <<  std::endl;
-// 	std::cout << "Task 2 : b =" << Beliefs_[2] << "\t db_hat = " << UpdateBeliefsRaw_[2] << "\t db = " << UpdateBeliefs_[2] <<  std::endl;
-// 	std::cout << "Task 3 : b =" << Beliefs_[3] << "\t db_hat = " << UpdateBeliefsRaw_[3] << "\t db = " << UpdateBeliefs_[3] <<  std::endl;
-// 	std::cout << "Task 4 : b =" << Beliefs_[4] << "\t db_hat = " << UpdateBeliefsRaw_[4] << "\t db = " << UpdateBeliefs_[4] <<  std::endl;
+	std::cout << "Task 1 : b =" << Beliefs_[0] << "\t db_hat = " << UpdateBeliefsRaw_[0] << "\t db = " << UpdateBeliefs_[0] <<  std::endl;
+	std::cout << "Task 2 : b =" << Beliefs_[1] << "\t db_hat = " << UpdateBeliefsRaw_[1] << "\t db = " << UpdateBeliefs_[1] <<  std::endl;
+	std::cout << "Task 3 : b =" << Beliefs_[2] << "\t db_hat = " << UpdateBeliefsRaw_[2] << "\t db = " << UpdateBeliefs_[2] <<  std::endl;
+	std::cout << "Task 4 : b =" << Beliefs_[3] << "\t db_hat = " << UpdateBeliefsRaw_[3] << "\t db = " << UpdateBeliefs_[3] <<  std::endl;
 
-// 	std::cout << "----------------------------------------------------- " << std::endl << std::endl;
-// }
+
+	ROS_INFO_STREAM("Beliefs : " << Beliefs_[0] << " " << Beliefs_[1] << " " << Beliefs_[2] << " " << Beliefs_[3]);
+	ROS_INFO_STREAM("centroid : " << Centers_[0][0] << " " << Centers_[0][1] << " " << Centers_[0][2] );
+	ROS_INFO_STREAM("Real posisition: " << RealPosition_[0] << " " << RealPosition_[1] << " " << RealPosition_[2]);
+	ROS_INFO_STREAM("activations:" << activations_[0]);
+	ROS_INFO_STREAM("activations:" << activations_[1]);
+
+	ROS_INFO_STREAM("--------------");
+
+	std::cout << "----------------------------------------------------- " << std::endl << std::endl;
+}
