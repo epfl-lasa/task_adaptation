@@ -4,6 +4,7 @@
 
   <arg name="topic_real_position" default="/lwr/ee_pose"/>
   <arg name="topic_real_velocity" default="/lwr/ee_vel"/>
+  <arg name="topic_external_force" default="/lwr/ee_ft"/>
 
   <arg name="topic_task1_velocity" default="/Task1/filter/desired_velocity"/>
   <arg name="topic_task2_velocity" default="/Task2/filter/desired_velocity"/>
@@ -59,6 +60,7 @@
 
   <group ns="Learning">
     <param name="topic_real_position"    value="$(arg topic_real_position)"/>
+    <param name="topic_external_force"   value="$(arg topic_external_force)"/>
     <param name="topic_real_velocity"    value="$(arg topic_real_velocity)"/>
     <param name="topic_task1_velocity"   value="$(arg topic_task1_velocity)"/>
     <param name="topic_task2_velocity"   value="$(arg topic_task2_velocity)"/>

@@ -10,7 +10,7 @@ TaskLearner::TaskLearner(ros::NodeHandle &n,
                          std::string topic_task3_velocity,
                          std::string topic_task4_velocity,
                          std::string topic_adapted_velocity,
-                         std::string topic_desired_force,
+                         std::string topic_external_force,
                          std::vector<double> x_lim,
                          std::vector<double> y_lim,
                          std::vector<double> z_lim,
@@ -25,7 +25,7 @@ TaskLearner::TaskLearner(ros::NodeHandle &n,
 	  topic_task3_velocity_(topic_task3_velocity),
 	  topic_task4_velocity_(topic_task4_velocity),
 	  topic_adapted_velocity_(topic_adapted_velocity),
-	  topic_desired_force_(topic_desired_force),
+	  topic_external_force_(topic_external_force),
 	  x_lim_(x_lim),
 	  y_lim_(y_lim),
 	  z_lim_(z_lim),
@@ -73,9 +73,11 @@ void TaskLearner::Run() {
 		ComputeDesiredVelocity();
 		PublishDesiredVelocity();
 
-		RawAdaptation();
-		SimpleWinnerTakeAll();
-		UpdateBeta();
+		if(ExtForce_norm2_ > thresh_ext_force_){
+			RawAdaptation();
+			SimpleWinnerTakeAll();
+			UpdateBeta();
+		}	
 
 
 		ros::spinOnce();
@@ -97,8 +99,8 @@ bool TaskLearner::InitROS() {
 	sub_task3_ = nh_.subscribe(topic_task3_velocity_, 1000, &TaskLearner::UpdateTask3, this, ros::TransportHints().reliable().tcpNoDelay());
 	sub_task4_ = nh_.subscribe(topic_task4_velocity_, 1000, &TaskLearner::UpdateTask4, this, ros::TransportHints().reliable().tcpNoDelay());
 
-	// ONE TOPIC TO READ REAL POSITION
 
+	sub_externalForce_ = nh_.subscribe(topic_external_force_, 1000, &TaskLearner::UpdateNormExternalForce, this, ros::TransportHints().reliable().tcpNoDelay());
 
 	pub_adapted_velocity_ = nh_.advertise<geometry_msgs::Twist>(topic_adapted_velocity_, 1);
 	pub_wrench_control_   = nh_.advertise<geometry_msgs::WrenchStamped>(topic_desired_force_, 1);
@@ -204,6 +206,8 @@ void TaskLearner::InitClassVariables() {
 
 
 	sigma2_ = 0.008;
+
+	thresh_ext_force_ = 0;
 
 // for (int i = 0; i < N_centeriods_; ++i) {
 // 	std::cout << Centers_[i][0] << "\t" << Centers_[i][1] << "\t" << Centers_[i][2] << std::endl;
@@ -405,6 +409,15 @@ void TaskLearner::updateRealVelocity(const geometry_msgs::Twist::ConstPtr& msg) 
 }
 
 
+void TaskLearner::UpdateNormExternalForce(const geometry_msgs::WrenchStamped::ConstPtr& msg){
+	ExtForce_norm2_ = 0;
+	ExtForce_norm2_ += pow(msg->wrench.force.x,2);
+	ExtForce_norm2_ += pow(msg->wrench.force.y,2);
+	ExtForce_norm2_ += pow(msg->wrench.force.z,2);
+}
+
+
+
 
 
 /*--------------------------------------------------------------------
@@ -460,6 +473,7 @@ void TaskLearner::DynCallback(task_adaptation::task_learning_paramsConfig& confi
 	D_gain_ = config.D_gain;
 	epsilon_ = config.epsilon;
 	sigma2_ = config.sigma2;
+	thresh_ext_force_ = config.ExtForce2;
 
 	ROS_INFO_STREAM("configCallback: received update! D_gain = " << D_gain_ << "  espsilon = " << epsilon_ << " Sigma2" << sigma2_);
 

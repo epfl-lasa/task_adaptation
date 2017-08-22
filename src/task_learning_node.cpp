@@ -22,13 +22,17 @@ int main(int argc, char **argv)
   std::string topic_task4_velocity;
 
   std::string topic_adapted_velocity;
-  std::string topic_desired_force;
 
   std::vector<double> x_lim;
   std::vector<double> y_lim;
   std::vector<double> z_lim;
 
   std::vector<int> N_grid_xyz;
+
+
+
+  std::string topic_external_force;
+
 
 
 
@@ -39,7 +43,11 @@ int main(int argc, char **argv)
     return -1;
   }
 
-
+  if (!nh.getParam("topic_external_force", topic_external_force))
+  {
+    ROS_ERROR("Visualization: Couldn't retrieve the topic name for the external force. ");
+    return -1;
+  }
 
   if (!nh.getParam("topic_real_velocity", topic_real_velocity))
   {
@@ -77,12 +85,6 @@ int main(int argc, char **argv)
     return -1;
   }
 
-  if (!nh.getParam("topic_desired_force", topic_desired_force))
-  {
-    ROS_ERROR("Couldn't retrieve the topic name for the desired force. ");
-    return -1;
-  }
-
   if (!nh.getParam("x_lim", x_lim))  {
     ROS_ERROR("Couldn't retrieve limits for the X-axis. ");
     return -1;
@@ -114,7 +116,7 @@ int main(int argc, char **argv)
                            topic_task3_velocity,
                            topic_task4_velocity,
                            topic_adapted_velocity,
-                           topic_desired_force,
+                           topic_external_force,
                            x_lim,
                            y_lim,
                            z_lim,

@@ -27,6 +27,8 @@ private:
 
 	ros::Subscriber sub_realPosition_;
 	ros::Subscriber sub_realVelocity_;
+	ros::Subscriber sub_externalForce_;
+
 	ros::Subscriber sub_task1_;
 	ros::Subscriber sub_task2_;
 	ros::Subscriber sub_task3_;
@@ -55,6 +57,8 @@ private:
 	std::string topic_task4_velocity_;
 	std::string topic_adapted_velocity_;
 	std::string topic_desired_force_;
+	std::string topic_external_force_;
+
 
 	std::vector<double> x_lim_;
 	std::vector<double> y_lim_;
@@ -69,7 +73,6 @@ private:
 	std::vector<std::vector<double>> Beta_;
 	std::vector<std::vector<double>> Beta_dot_;
 
-	double sigma2_;
 
 
 	// task adaptation variables
@@ -100,6 +103,12 @@ private:
 	// control gain for a simple velocity controller
 	double D_gain_;
 	// double D_gain_hack_;
+
+	double sigma2_;
+
+	double thresh_ext_force_;
+	double ExtForce_norm2_;
+
 
 public:
 
@@ -152,6 +161,9 @@ public:
 
 	void updateRealPosition(const geometry_msgs::Pose::ConstPtr& msg);
 
+	void UpdateNormExternalForce(const geometry_msgs::WrenchStamped::ConstPtr& msg);
+
+
 	// void UpdateRealVelocity_world(const geometry_msgs::Twist::ConstPtr& msg);
 
 
@@ -159,6 +171,8 @@ public:
 	void UpdateTask2(const geometry_msgs::TwistStamped::ConstPtr & msg);
 	void UpdateTask3(const geometry_msgs::TwistStamped::ConstPtr & msg);
 	void UpdateTask4(const geometry_msgs::TwistStamped::ConstPtr & msg);
+
+
 
 
 	void DynCallback(task_adaptation::task_learning_paramsConfig& config, uint32_t level);

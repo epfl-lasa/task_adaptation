@@ -152,22 +152,22 @@ void LearningVisualizer::InitClassVariables() {
 
 	geometry_msgs::Point p1, p2, p3, p4, p5, p6;
 	p1.x = -0.36;
-	p1.y = -0.48;
+	p1.y = -0.38;
 	p1.z = 0.20;
 	p2.x = -0.72;
-	p2.y = -0.48;
+	p2.y = -0.38;
 	p2.z = 0.20;
 	p3.x = -0.72;
-	p3.y = 0.24;
+	p3.y = 0.34;
 	p3.z = 0.20;
 	p4.x = -0.72;
-	p4.y = 0.24;
+	p4.y = 0.34;
 	p4.z = 0.20;
 	p5.x = -0.36;
-	p5.y = 0.24;
+	p5.y = 0.34;
 	p5.z = 0.20;
 	p6.x = -0.36;
-	p6.y = -0.48;
+	p6.y = -0.38;
 	p6.z = 0.20;
 
 	std_msgs::ColorRGBA c;
@@ -240,9 +240,9 @@ void LearningVisualizer::InitClassVariables() {
 	marker_3_.color.b = 1.0f;
 	marker_3_.color.a = 1.0f;
 
-	marker_4_.color.r = 1.0f;
-	marker_4_.color.g = 1.0f;
-	marker_4_.color.b = 1.0f;
+	marker_4_.color.r = 0.0f;
+	marker_4_.color.g = 0.0f;
+	marker_4_.color.b = 0.0f;
 	marker_4_.color.a = 1.0f;
 
 
@@ -263,7 +263,7 @@ void LearningVisualizer::InitClassVariables() {
 	myPointCloud_.channels[0].name = "rgb";
 	myPointCloud_.channels[1].name = "intensity";
 
-	int nx = 12, ny = 25, nz = 12;
+	int nx = 20, ny = 30, nz = 15;
 	myPointCloud_.points.resize(nx * ny * nz);
 	myPointCloud_.channels[0].values.resize(nx * ny * nz);
 	myPointCloud_.channels[1].values.resize(nx * ny * nz);
@@ -365,7 +365,7 @@ void LearningVisualizer::InitClassVariables() {
 	}
 
 
-	sigma2_ = 0.008;
+	sigma2_ = 0.004;
 
 
 
@@ -448,9 +448,6 @@ void LearningVisualizer::updateRealPosition(const geometry_msgs::Pose::ConstPtr&
 	RealPosition_[0] = msg->position.x;
 	RealPosition_[1] = msg->position.y;
 	RealPosition_[2] = msg->position.z;
-
-
-	ROS_WARN("reading the real position");
 }
 
 
