@@ -9,7 +9,11 @@ LearningVisualizer::LearningVisualizer(ros::NodeHandle &n,
                                        std::vector<double> x_lim,
                                        std::vector<double> y_lim,
                                        std::vector<double> z_lim,
-                                       std::vector<int> N_grid_xyz )
+                                       std::vector<int> N_grid_xyz,
+                                       std::string topic_task1_velocity,
+                                       std::string topic_task2_velocity,
+                                       std::string topic_task3_velocity,
+                                       std::string topic_task4_velocity)
 	: nh_(n),
 	  loop_rate_(frequency),
 	  topic_real_position_(topic_real_position),
@@ -18,7 +22,11 @@ LearningVisualizer::LearningVisualizer(ros::NodeHandle &n,
 	  x_lim_(x_lim),
 	  y_lim_(y_lim),
 	  z_lim_(z_lim),
-	  N_grid_xyz_(N_grid_xyz) {
+	  N_grid_xyz_(N_grid_xyz),
+	  topic_task1_velocity_(topic_task1_velocity),
+	  topic_task2_velocity_(topic_task2_velocity),
+	  topic_task3_velocity_(topic_task3_velocity),
+	  topic_task4_velocity_(topic_task4_velocity) {
 
 	ROS_INFO_STREAM("Task-Learning node is created at: " << nh_.getNamespace() << " with freq: " << frequency << "Hz");
 }
@@ -58,9 +66,9 @@ void LearningVisualizer::Run() {
 
 		// ComputeActivation();
 
-		// ComputeBeliefs();
 		ComputeBeliefs();
 
+		ComputePublishFuturePath();
 
 		ros::spinOnce();
 		loop_rate_.sleep();
@@ -76,6 +84,12 @@ bool LearningVisualizer::InitROS() {
 	sub_target_3_ = nh_.subscribe("/Tasks/Task3/DS/target"  , 10, &LearningVisualizer::GetTargetTask3, this);
 	sub_target_4_ = nh_.subscribe("/Tasks/Task4/DS/target"  , 10, &LearningVisualizer::GetTargetTask4, this);
 
+	sub_task1_velocity_ = nh_.subscribe(topic_task1_velocity_, 10, &LearningVisualizer::UpdateTask1, this, ros::TransportHints().reliable().tcpNoDelay());
+	sub_task2_velocity_ = nh_.subscribe(topic_task2_velocity_, 10, &LearningVisualizer::UpdateTask2, this, ros::TransportHints().reliable().tcpNoDelay());
+	sub_task3_velocity_ = nh_.subscribe(topic_task3_velocity_, 10, &LearningVisualizer::UpdateTask3, this, ros::TransportHints().reliable().tcpNoDelay());
+	sub_task4_velocity_ = nh_.subscribe(topic_task4_velocity_, 10, &LearningVisualizer::UpdateTask4, this, ros::TransportHints().reliable().tcpNoDelay());
+
+
 	sub_beliefs_ = nh_.subscribe(topic_beliefs_  , 10, &LearningVisualizer::UpdateBeliefs, this);
 	sub_beta_ = nh_.subscribe(topic_betas_  , 10, &LearningVisualizer::UpdateBetas, this);
 
@@ -89,6 +103,9 @@ bool LearningVisualizer::InitROS() {
 	pub_surface_ = nh_.advertise<visualization_msgs::Marker>("/Learning/surface_marker", 1);
 
 	pub_pointCloud_ = nh_.advertise<sensor_msgs::PointCloud>("/Learning/point_cloud", 10);
+
+	pub_DesiredPath_ = nh_.advertise<nav_msgs::Path>("/Learning/DesiredPath", 1);
+
 
 	sub_realPosition_ = nh_.subscribe(topic_real_position_, 1000,
 	                                  &LearningVisualizer::updateRealPosition, this, ros::TransportHints().reliable().tcpNoDelay());
@@ -284,6 +301,11 @@ void LearningVisualizer::InitClassVariables() {
 
 	RealPosition_.resize(3);
 
+	Task1_velocity_.resize(3);
+	Task2_velocity_.resize(3);
+	Task3_velocity_.resize(3);
+	Task4_velocity_.resize(3);
+
 
 
 	Beliefs_.resize(4);
@@ -427,6 +449,8 @@ void LearningVisualizer::updateRealPosition(const geometry_msgs::Pose::ConstPtr&
 	RealPosition_[1] = msg->position.y;
 	RealPosition_[2] = msg->position.z;
 
+
+	ROS_WARN("reading the real position");
 }
 
 
@@ -551,16 +575,197 @@ void LearningVisualizer::UpdateBetas(const std_msgs::Float64MultiArray::ConstPtr
 
 
 
-// void TaskLearner::ComputeDesiredVelocity() {
+void LearningVisualizer::ComputePublishFuturePath() {
 
-// 	// starting to zero
-// 	std::fill(DesiredVelocity_.begin(), DesiredVelocity_.end(), 0);
 
-// 	for (int dim = 0 ; dim < 3 ; dim++)
-// 	{
-// 		DesiredVelocity_[dim] += Beliefs_[0] * Task1_velocity_[dim];
-// 		DesiredVelocity_[dim] += Beliefs_[1] * Task2_velocity_[dim];
-// 		DesiredVelocity_[dim] += Beliefs_[2] * Task3_velocity_[dim];
-// 		DesiredVelocity_[dim] += Beliefs_[3] * Task4_velocity_[dim];
-// 	}
+
+
+	// geometry_msgs::PointStamped msg;
+
+	// msg.header.frame_id = "world";
+	// msg.header.stamp = ros::Time::now();
+	// msg.point.x = target_pose_[0] + target_offset_[0];
+	// msg.point.y = target_pose_[1] + target_offset_[1];
+	// msg.point.z = target_pose_[2] + target_offset_[2];
+
+	// pub_target_.publish(msg);
+
+	// // create a temporary message
+
+
+	// setting the header of the path
+	msg_DesiredPath_.header.stamp = ros::Time::now();
+	msg_DesiredPath_.header.frame_id = "world";
+
+	std::vector<double> simulated_pos = RealPosition_;
+	std::vector<double> simulated_vel;
+	simulated_vel.resize(3);
+
+	std::vector<double> sim_activation;
+	sim_activation.resize(N_centeriods_);
+
+	std::vector<double> sim_beliefs;
+	sim_beliefs.resize(4);
+
+	double dt = .2;
+
+	msg_DesiredPath_.poses.resize(MAX_FRAME);
+
+
+	for (int frame = 0; frame < MAX_FRAME; frame++) {
+
+		double sum_activation = 0;
+		for (int i = 0; i < N_centeriods_; i++) {
+
+			double norm2 = 0;
+			norm2 += pow(Centers_[i][0] - simulated_pos[0], 2);
+			norm2 += pow(Centers_[i][1] - simulated_pos[1], 2);
+			norm2 += pow(Centers_[i][2] - simulated_pos[2], 2);
+
+			sim_activation[i] = exp(-0.5 * norm2 / sigma2_);
+
+			sum_activation += sim_activation[i];
+		}
+
+		for (int i = 0; i < N_centeriods_; i++)	{
+			sim_activation[i] /= sum_activation;
+		}
+
+		for (int j = 0; j < 3; j++) {
+			sim_beliefs[j] = 0;
+			for (int i = 0; i < N_centeriods_; i++) {
+				sim_beliefs[j] += sim_activation[i] * Beta_[i][j];
+			}
+			if (sim_beliefs[j] < 0) {
+				sim_beliefs[j] = 0;
+			}
+		}
+
+		for (int d = 0; d < 2; d++) {
+			simulated_vel[d] = 0;
+			simulated_vel[d] += sim_beliefs[0] * Task1_velocity_[d];
+			simulated_vel[d] += sim_beliefs[1] * Task2_velocity_[d];
+			simulated_vel[d] += sim_beliefs[2] * Task3_velocity_[d];
+			simulated_vel[d] += sim_beliefs[3] * Task4_velocity_[d];
+
+		}
+
+		simulated_pos[0] +=  simulated_vel[0] * dt;
+		simulated_pos[1] +=  simulated_vel[1] * dt;
+		simulated_pos[2] +=  simulated_vel[2] * dt;
+
+		msg_DesiredPath_.poses[frame].header.stamp = ros::Time::now();
+		msg_DesiredPath_.poses[frame].header.frame_id = "world";
+		msg_DesiredPath_.poses[frame].pose.position.x = simulated_pos[0];
+		msg_DesiredPath_.poses[frame].pose.position.y = simulated_pos[1];
+		msg_DesiredPath_.poses[frame].pose.position.z = simulated_pos[2];
+
+	}
+
+
+	pub_DesiredPath_.publish(msg_DesiredPath_);
+
+
+
+
+	//may check for sum (over j for each i ) to one
+
 // }
+
+
+// double sum_activation = 0;
+
+// for (int i = 0; i < myPointCloud_.points.size(); i++) {
+// 	double sum_activation = 0;
+
+// 	for (int j = 0; j < N_centeriods_; j++) {
+// 		double norm2 = 0;
+// 		norm2 += pow(Centers_[j][0] - myPointCloud_.points[i].x, 2);
+// 		norm2 += pow(Centers_[j][1] - myPointCloud_.points[i].y, 2);
+// 		norm2 += pow(Centers_[j][2] - myPointCloud_.points[i].z, 2);
+
+// 		activations_[i][j] = exp(-0.5 * norm2 / sigma2_);
+
+// 		sum_activation += activations_[i][j];
+// 	}
+
+// 	for (int j = 0; j < N_centeriods_; j++)
+// 	{
+// 		activations_[i][j] /= sum_activation;
+// 	}
+
+
+
+// for (int frame = 0; frame < MAX_FRAME; frame++)
+// {
+
+
+// 	simulated_vel = SED_GMM_->getVelocity(simulated_pose - target_pose_ - target_offset_);
+
+// 	simulated_pose[0] +=  simulated_vel[0] * dt_ * 20;
+// 	simulated_pose[1] +=  simulated_vel[1] * dt_ * 20;
+// 	simulated_pose[2] +=  simulated_vel[2] * dt_ * 20;
+
+// 	msg_DesiredPath_.poses[frame].header.stamp = ros::Time::now();
+// 	msg_DesiredPath_.poses[frame].header.frame_id = "world";
+// 	msg_DesiredPath_.poses[frame].pose.position.x = simulated_pose[0];
+// 	msg_DesiredPath_.poses[frame].pose.position.y = simulated_pose[1];
+// 	msg_DesiredPath_.poses[frame].pose.position.z = simulated_pose[2];
+
+// 	pub_DesiredPath_.publish(msg_DesiredPath_);
+
+
+// }
+
+
+
+// // starting to zero
+// std::fill(DesiredVelocity_.begin(), DesiredVelocity_.end(), 0);
+
+// for (int dim = 0 ; dim < 3 ; dim++)
+// {
+// 	DesiredVelocity_[dim] += Beliefs_[0] * Task1_velocity_[dim];
+// 	DesiredVelocity_[dim] += Beliefs_[1] * Task2_velocity_[dim];
+// 	DesiredVelocity_[dim] += Beliefs_[2] * Task3_velocity_[dim];
+// 	DesiredVelocity_[dim] += Beliefs_[3] * Task4_velocity_[dim];
+// }
+}
+
+
+
+/*--------------------------------------------------------------------
+ * Reading the new desired velocity of each task
+ * and setting the flags to true for receiving the new data points
+ *------------------------------------------------------------------*/
+
+void LearningVisualizer::UpdateTask1(const geometry_msgs::TwistStamped::ConstPtr & msg)
+{
+	Task1_velocity_[0] = msg->twist.linear.x;
+	Task1_velocity_[1] = msg->twist.linear.y;
+	Task1_velocity_[2] = msg->twist.linear.z;
+
+}
+
+void LearningVisualizer::UpdateTask2(const geometry_msgs::TwistStamped::ConstPtr & msg)
+{
+	Task2_velocity_[0] = msg->twist.linear.x;
+	Task2_velocity_[1] = msg->twist.linear.y;
+	Task2_velocity_[2] = msg->twist.linear.z;
+
+}
+
+void LearningVisualizer::UpdateTask3(const geometry_msgs::TwistStamped::ConstPtr & msg)
+{
+	Task3_velocity_[0] = msg->twist.linear.x;
+	Task3_velocity_[1] = msg->twist.linear.y;
+	Task3_velocity_[2] = msg->twist.linear.z;
+
+}
+
+void LearningVisualizer::UpdateTask4(const geometry_msgs::TwistStamped::ConstPtr & msg)
+{
+	Task4_velocity_[0] = msg->twist.linear.x;
+	Task4_velocity_[1] = msg->twist.linear.y;
+	Task4_velocity_[2] = msg->twist.linear.z;
+
+}

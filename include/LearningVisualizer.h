@@ -11,6 +11,10 @@
 
 #include <sensor_msgs/PointCloud.h>
 
+#include "geometry_msgs/TwistStamped.h"
+
+#include "nav_msgs/Path.h"
+
 
 class LearningVisualizer {
 
@@ -38,6 +42,21 @@ private:
 	ros::Subscriber sub_target_2_;
 	ros::Subscriber sub_target_3_;
 	ros::Subscriber sub_target_4_;
+
+	std::string topic_task1_velocity_;
+	std::string topic_task2_velocity_;
+	std::string topic_task3_velocity_;
+	std::string topic_task4_velocity_;
+
+	ros::Subscriber sub_task1_velocity_;
+	ros::Subscriber sub_task2_velocity_;
+	ros::Subscriber sub_task3_velocity_;
+	ros::Subscriber sub_task4_velocity_;
+
+	std::vector<float> Task1_velocity_;
+	std::vector<float> Task2_velocity_;
+	std::vector<float> Task3_velocity_;
+	std::vector<float> Task4_velocity_;
 
 	ros::Subscriber sub_beliefs_;
 	ros::Subscriber sub_beta_;
@@ -82,7 +101,13 @@ private:
 
 
 	// future path
-	std::vector<float> RealPosition_;
+	std::vector<double> RealPosition_;
+
+	nav_msgs::Path msg_DesiredPath_;
+	int MAX_FRAME = 5;
+
+	ros::Publisher pub_DesiredPath_;
+
 
 
 public:
@@ -95,7 +120,11 @@ public:
 	                   std::vector<double> x_lim,
 	                   std::vector<double> y_lim,
 	                   std::vector<double> z_lim,
-	                   std::vector<int> N_grid_xyz );
+	                   std::vector<int> N_grid_xyz,
+	                   std::string topic_task1_velocity,
+	                   std::string topic_task2_velocity,
+	                   std::string topic_task3_velocity,
+	                   std::string topic_task4_velocity );
 
 	bool Init();
 
@@ -128,7 +157,12 @@ private:
 	void UpdateBeliefs(const std_msgs::Float64MultiArray::ConstPtr& msg);
 	void UpdateBetas(const std_msgs::Float64MultiArray::ConstPtr& msg);
 
+	void UpdateTask1(const geometry_msgs::TwistStamped::ConstPtr& msg);
+	void UpdateTask2(const geometry_msgs::TwistStamped::ConstPtr& msg);
+	void UpdateTask3(const geometry_msgs::TwistStamped::ConstPtr& msg);
+	void UpdateTask4(const geometry_msgs::TwistStamped::ConstPtr& msg);
 
+	void ComputePublishFuturePath();
 
 	// void DynCallback(task_adaptation::task_learning_paramsConfig& config, uint32_t level);
 // 	// void UpdateParamCallback(const task_adaptation::task_adaptation_params::ConstPtr _msg);

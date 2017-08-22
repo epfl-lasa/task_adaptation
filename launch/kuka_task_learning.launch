@@ -71,17 +71,30 @@
 
     <node name="TL_node" pkg="task_adaptation" type="task_learning_node" output="screen"/>
 
+
+    <param name="topic_beliefs"    value="/Learning/beliefs"/>
+    <param name="topic_betas"      value="/Learning/betas"/>
+
+    <node name="TL_vis" pkg="task_adaptation" type="task_learning_visualization" output="screen"/>
+
     <!-- <node name="TA_record" pkg="task_adaptation" type="record_adaptation_node" output="screen"/> -->
 
   </group>
 
-  <group ns="Visualization">
-    <param name="topic_beliefs"    value="/Learning/beliefs"/>
-    <param name="topic_betas"      value="/Learning/betas"/>
+
+
+  <!-- <group ns="Visualization">
+
+
     <rosparam command="load" file="$(find ds_motion_generator)/config/TL_limits.yml"/>
+
     <param name="topic_real_position"    value="$(arg topic_real_position)"/>
-    <node name="TL_vis" pkg="task_adaptation" type="task_learning_visualization" output="screen"/>
-  </group>
+    <param name="topic_task1_velocity"   value="$(arg topic_task1_velocity)"/>
+    <param name="topic_task2_velocity"   value="$(arg topic_task2_velocity)"/>
+    <param name="topic_task3_velocity"   value="$(arg topic_task3_velocity)"/>
+    <param name="topic_task4_velocity"   value="$(arg topic_task4_velocity)"/>
+
+  </group> -->
 
 
   <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" />
