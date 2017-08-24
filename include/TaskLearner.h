@@ -10,6 +10,7 @@
 #include "geometry_msgs/TwistStamped.h"
 #include "geometry_msgs/WrenchStamped.h"
 #include "std_msgs/Float64MultiArray.h"
+#include "std_msgs/Float64.h"
 
 
 #include <dynamic_reconfigure/server.h>
@@ -24,6 +25,7 @@ private:
 	ros::NodeHandle nh_;
 	ros::Rate loop_rate_;
 	ros::Duration disp_rate_;
+	ros::Duration publish_beta_rate_;
 
 	ros::Subscriber sub_realPosition_;
 	ros::Subscriber sub_realVelocity_;
@@ -39,6 +41,8 @@ private:
 
 	ros::Publisher pub_beliefs_;
 	ros::Publisher pub_betas_;
+	ros::Publisher pub_alpha2_;
+
 
 
 	geometry_msgs::Twist  msgDesiredVelocity_;
@@ -89,6 +93,17 @@ private:
 	std::vector<float> Task3_velocity_;
 	std::vector<float> Task4_velocity_;
 
+	// the flowoing are used to freeze the signals for learning
+
+	std::vector<float> freeze_Task1_velocity_;
+	std::vector<float> freeze_Task2_velocity_;
+	std::vector<float> freeze_Task3_velocity_;
+	std::vector<float> freeze_Task4_velocity_;
+	std::vector<float> freeze_RealPosition_;
+	std::vector<float> freeze_RealVelocity_;
+	std::vector<float> freeze_DesiredVelocity_;
+
+
 
 	// vectors to contain beliefs and their updates
 	std::vector<bool>  flag_newdata_; // 0 for realvelocity and i for task_i
@@ -104,7 +119,7 @@ private:
 	double D_gain_;
 	// double D_gain_hack_;
 
-	double sigma2_;
+	double alpha2_;
 
 	double thresh_ext_force_;
 	double ExtForce_norm2_;
@@ -151,6 +166,7 @@ public:
 	void PublishBeliefs();
 	void PublishBetas();
 
+	void freezeTheSignals();
 
 
 // 	void ComputeDesiredForce();

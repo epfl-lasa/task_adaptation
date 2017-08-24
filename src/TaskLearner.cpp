@@ -18,6 +18,7 @@ TaskLearner::TaskLearner(ros::NodeHandle &n,
 	: nh_(n),
 	  loop_rate_(frequency),
 	  disp_rate_(0.4),
+	  publish_beta_rate_(0.5),
 	  topic_real_position_(topic_real_position),
 	  topic_real_velocity_(topic_real_velocity),
 	  topic_task1_velocity_(topic_task1_velocity),
@@ -54,6 +55,7 @@ void TaskLearner::Run() {
 
 	ros::Time::now();
 	ros::Time time_display = ros::Time::now() + disp_rate_;
+	ros::Time time_publish_beta = ros::Time::now() + publish_beta_rate_;
 
 	ROS_INFO("Task-Learning node is running ...");
 
@@ -62,22 +64,40 @@ void TaskLearner::Run() {
 		if ( (ros::Time::now() - time_display).toSec() > 0  ) {
 			time_display = ros::Time::now() + disp_rate_;
 			DisplayInformation();
+		}
+
+		if ( (ros::Time::now() - time_publish_beta).toSec() > 0  ) {
+			time_publish_beta = ros::Time::now() + publish_beta_rate_;
 			PublishBetas();
 		}
+
+
+		freezeTheSignals();
+
 
 		ComputeActivation();
 
 		ComputeBeliefs();
 		PublishBeliefs();
 
+
 		ComputeDesiredVelocity();
 		PublishDesiredVelocity();
+
+
 
 		if(ExtForce_norm2_ > thresh_ext_force_){
 			RawAdaptation();
 			SimpleWinnerTakeAll();
 			UpdateBeta();
 		}	
+
+		// there might be a change in task-velocities, so we update the desired velocity
+		ComputeDesiredVelocity();
+		PublishDesiredVelocity();
+
+
+
 
 
 		ros::spinOnce();
@@ -107,6 +127,7 @@ bool TaskLearner::InitROS() {
 
 	pub_beliefs_ = nh_.advertise<std_msgs::Float64MultiArray>("beliefs", 1);
 	pub_betas_   = nh_.advertise<std_msgs::Float64MultiArray>("betas", 1);
+	pub_alpha2_  = nh_.advertise<std_msgs::Float64>("alpha2", 1);
 
 	dyn_rec_f_ = boost::bind(&TaskLearner::DynCallback, this, _1, _2);
 	dyn_rec_srv_.setCallback(dyn_rec_f_);
@@ -138,6 +159,35 @@ void TaskLearner::InitClassVariables() {
 	Task3_velocity_.resize(3);
 	Task4_velocity_.resize(3);
 
+	std::fill(RealPosition_.begin(), RealPosition_.end(), 0.0f);
+	std::fill(RealVelocity_.begin(), RealVelocity_.end(), 0.0f);
+	std::fill(DesiredVelocity_.begin(), DesiredVelocity_.end(), 0.0f);
+	std::fill(ControlWrench_.begin(), ControlWrench_.end(), 0.0f);
+
+	std::fill(Task1_velocity_.begin(), Task1_velocity_.end(), 0.0f);
+	std::fill(Task2_velocity_.begin(), Task2_velocity_.end(), 0.0f);
+	std::fill(Task3_velocity_.begin(), Task3_velocity_.end(), 0.0f);
+	std::fill(Task4_velocity_.begin(), Task4_velocity_.end(), 0.0f);
+
+
+
+	freeze_Task1_velocity_.resize(3);
+	freeze_Task2_velocity_.resize(3);
+	freeze_Task3_velocity_.resize(3);
+	freeze_Task4_velocity_.resize(3);
+	freeze_RealPosition_.resize(3);
+	freeze_RealVelocity_.resize(3);
+	freeze_DesiredVelocity_.resize(3);
+
+	std::fill(freeze_Task1_velocity_.begin(),  freeze_Task1_velocity_.end(), 0.0f);
+	std::fill(freeze_Task2_velocity_.begin(),  freeze_Task2_velocity_.end(), 0.0f);
+	std::fill(freeze_Task3_velocity_.begin(),  freeze_Task3_velocity_.end(), 0.0f);
+	std::fill(freeze_Task4_velocity_.begin(),  freeze_Task4_velocity_.end(), 0.0f);
+	std::fill(freeze_RealPosition_.begin(),  freeze_RealPosition_.end(), 0.0f);
+	std::fill(freeze_RealVelocity_.begin(),  freeze_RealVelocity_.end(), 0.0f);
+	std::fill(freeze_DesiredVelocity_.begin(),  freeze_DesiredVelocity_.end(), 0.0f);
+
+
 	Beliefs_.resize(4);
 	std::fill(Beliefs_.begin(), Beliefs_.end(), 0.25f);
 // 	Beliefs_[0] = 1;
@@ -156,7 +206,7 @@ void TaskLearner::InitClassVariables() {
 	// epsilon_hack_ = epsilon_;
 	// D_gain_hack_ = D_gain_;
 
-
+	ExtForce_norm2_ = 0;
 
 	// intialize the centriods
 	N_centeriods_ = N_grid_xyz_[0] * N_grid_xyz_[1] * N_grid_xyz_[2];
@@ -198,14 +248,18 @@ void TaskLearner::InitClassVariables() {
 	for (int i = 0; i < N_centeriods_; i++) {
 		Beta_[i].resize(4); // for 4 tasks
 		Beta_dot_[i].resize(4);
-		for (int j = 0; j < 4; j++) {
-			Beta_[i][j] = 0.25f; // equally between tasks
-			Beta_dot_[i][j] = 0.0f;
-		}
+
+		Beta_[i] = {0.25 , 0.25 , 0.25 , 0.25};
+		Beta_dot_[i] = {0, 0 ,0 ,0 };
+
+		// for (int j = 0; j < 4; j++) {
+		// 	Beta_[i][j] = 0.25f; // equally between tasks
+		// 	Beta_dot_[i][j] = 0.0f;
+		// }
 	}
 
 
-	sigma2_ = 0.008;
+	alpha2_ = pow(100,2);
 
 	thresh_ext_force_ = 0;
 
@@ -217,6 +271,19 @@ void TaskLearner::InitClassVariables() {
 
 
 }
+
+void TaskLearner::freezeTheSignals() {
+
+	freeze_Task1_velocity_ = Task1_velocity_;
+	freeze_Task2_velocity_ = Task2_velocity_;
+	freeze_Task3_velocity_ = Task3_velocity_;
+	freeze_Task4_velocity_ = Task4_velocity_;
+	freeze_RealPosition_   = RealPosition_;
+	freeze_RealVelocity_   = RealVelocity_;
+	freeze_DesiredVelocity_ = DesiredVelocity_;
+
+}
+
 
 
 // bool TaskLearner::CheckNewData() {
@@ -245,20 +312,28 @@ void TaskLearner::ComputeActivation() {
 		double norm2 = 0;
 		for (int j = 0; j < 3; j++) // x-y-z
 		{
-			norm2 += pow(Centers_[i][j] - RealPosition_[j], 2);
+			norm2 += pow(Centers_[i][j] - freeze_RealPosition_[j], 2);
 		}
 
-		activations_[i] = exp(-0.5 * norm2 / sigma2_);
-
+		if ( alpha2_ * norm2 > 7) {
+			activations_[i] = 0;
+		}
+		else{
+			activations_[i] = exp(-alpha2_ * norm2 );
+		}
 		sum_activation += activations_[i];
 	}
 
 	// normalizing the activations
-	for (int i = 0; i < N_centeriods_; i++)
-	{
-		activations_[i] /= sum_activation;
+	if (sum_activation != 0) {  
+		for (int i = 0; i < N_centeriods_; i++) {
+			activations_[i] /= sum_activation;
+		}
 	}
-
+	// else { // if the robot is far away from all centroids, they all be inactive
+	// 	std::fill(activations_.begin(), activations_.end(), 1.0f / (double)N_centeriods_);
+	// }
+	
 
 }
 
@@ -267,8 +342,11 @@ void TaskLearner::ComputeBeliefs() {
 	std::fill(Beliefs_.begin(), Beliefs_.end(), 0.0f);
 
 	for (int i = 0; i < N_centeriods_; i++) {
-		for (int j = 0; j < 4 ; j++) {
-			Beliefs_[j] += activations_[i] * Beta_[i][j];
+
+		if(activations_[i] > 0.001){ // only centriods with enuoght activation contributes
+			for (int j = 0; j < 4 ; j++) {
+				Beliefs_[j] += activations_[i] * Beta_[i][j];
+			}
 		}
 	}
 
@@ -285,23 +363,32 @@ void TaskLearner::ComputeBeliefs() {
 		sum_beliefs += Beliefs_[j];
 	}
 
-	for (int j = 0; j < 4 ; j++) {
-		Beliefs_[j] /= sum_beliefs;
+	if(sum_beliefs == 0){
+		ROS_WARN_THROTTLE(0.4,"No activation, going for equal beliefs!!!");
+		std::fill(Beliefs_.begin(), Beliefs_.end(), 0.25f);
+	}
+	else {
+		for (int j = 0; j < 4 ; j++) {
+			Beliefs_[j] /= sum_beliefs;
+		}
 	}
 }
 
 void TaskLearner::UpdateBeta() {
 
 	for (int i = 0; i < N_centeriods_; i++) {
-		for (int j = 0; j < 4; j++) {
-			Beta_dot_[i][j] = activations_[i] * UpdateBeliefs_[j];
-		}
-	}
 
-	for (int i = 0; i < N_centeriods_; i++) {
+		if(activations_[i] < 0.001)
+			continue;
+
+
+		// for (int j = 0; j < 4; j++) {
+		// 	Beta_dot_[i][j] = activations_[i] * UpdateBeliefs_[j];
+		// }
+
 		double beta_sum = 0;
 		for (int j = 0; j < 4; j++) {
-			Beta_[i][j]  +=  epsilon_ *  Beta_dot_[i][j];
+			Beta_[i][j]  +=  epsilon_ *  activations_[i] * UpdateBeliefs_[j];
 
 			if (Beta_[i][j] < 0) {
 				Beta_[i][j] = 0;
@@ -314,6 +401,31 @@ void TaskLearner::UpdateBeta() {
 		}
 	}
 }
+
+// void TaskLearner::UpdateBeta() {
+
+// 	for (int i = 0; i < N_centeriods_; i++) {
+// 		for (int j = 0; j < 4; j++) {
+// 			Beta_dot_[i][j] = activations_[i] * UpdateBeliefs_[j];
+// 		}
+// 	}
+
+// 	for (int i = 0; i < N_centeriods_; i++) {
+// 		double beta_sum = 0;
+// 		for (int j = 0; j < 4; j++) {
+// 			Beta_[i][j]  +=  epsilon_ *  Beta_dot_[i][j];
+
+// 			if (Beta_[i][j] < 0) {
+// 				Beta_[i][j] = 0;
+// 			}
+
+// 			beta_sum += Beta_[i][j];
+// 		}
+// 		for (int j = 0; j < 4; j++) {
+// 			Beta_[i][j]  /=  beta_sum;
+// 		}
+// 	}
+// }
 
 
 
@@ -347,6 +459,7 @@ void TaskLearner::PublishBetas() {
 
 	pub_betas_.publish(msg);
 }
+
 
 
 // void TaskLearner::ComputeDesiredForce() {
@@ -472,10 +585,14 @@ void TaskLearner::DynCallback(task_adaptation::task_learning_paramsConfig& confi
 	// Set class variables to new values. They should match what is input at the dynamic reconfigure GUI.
 	D_gain_ = config.D_gain;
 	epsilon_ = config.epsilon;
-	sigma2_ = config.sigma2;
+	alpha2_ = pow(config.alpha,2);
 	thresh_ext_force_ = config.ExtForce2;
 
-	ROS_INFO_STREAM("configCallback: received update! D_gain = " << D_gain_ << "  espsilon = " << epsilon_ << " Sigma2" << sigma2_);
+	ROS_INFO_STREAM("configCallback: received update! D_gain = " << D_gain_ << "  espsilon = " << epsilon_ << " alpha2 =" << alpha2_);
+
+	std_msgs::Float64 msg;
+	msg.data = alpha2_;
+	pub_alpha2_.publish(msg);
 
 }
 
@@ -522,32 +639,32 @@ void TaskLearner::RawAdaptation()
 	double TempInnerSimilarity;
 
 
-	UpdateBeliefsRaw_[0] -= ComputeOutterSimilarity(Task1_velocity_);
-	TempInnerSimilarity   = 2 * ComputeInnerSimilarity(Beliefs_[0], Task1_velocity_);
+	UpdateBeliefsRaw_[0] -= ComputeOutterSimilarity(freeze_Task1_velocity_);
+	TempInnerSimilarity   = 2 * ComputeInnerSimilarity(Beliefs_[0], freeze_Task1_velocity_);
 	UpdateBeliefsRaw_[0] -= TempInnerSimilarity;
 
 	if (TempInnerSimilarity > NullinnterSimilarity) {
 		NullinnterSimilarity = TempInnerSimilarity;
 	}
 
-	UpdateBeliefsRaw_[1] -= ComputeOutterSimilarity(Task2_velocity_);
-	TempInnerSimilarity = 2 * ComputeInnerSimilarity(Beliefs_[1], Task2_velocity_);
+	UpdateBeliefsRaw_[1] -= ComputeOutterSimilarity(freeze_Task2_velocity_);
+	TempInnerSimilarity = 2 * ComputeInnerSimilarity(Beliefs_[1], freeze_Task2_velocity_);
 	UpdateBeliefsRaw_[1] -= TempInnerSimilarity;
 
 	if (TempInnerSimilarity > NullinnterSimilarity) {
 		NullinnterSimilarity = TempInnerSimilarity;
 	}
 
-	UpdateBeliefsRaw_[2] -= ComputeOutterSimilarity(Task3_velocity_);
-	TempInnerSimilarity   = 2 * ComputeInnerSimilarity(Beliefs_[2], Task3_velocity_);
+	UpdateBeliefsRaw_[2] -= ComputeOutterSimilarity(freeze_Task3_velocity_);
+	TempInnerSimilarity   = 2 * ComputeInnerSimilarity(Beliefs_[2], freeze_Task3_velocity_);
 	UpdateBeliefsRaw_[2] -= TempInnerSimilarity;
 
 	if (TempInnerSimilarity > NullinnterSimilarity) {
 		NullinnterSimilarity = TempInnerSimilarity;
 	}
 
-	UpdateBeliefsRaw_[3] -= ComputeOutterSimilarity(Task4_velocity_);
-	TempInnerSimilarity   = 2 * ComputeInnerSimilarity(Beliefs_[3], Task4_velocity_);
+	UpdateBeliefsRaw_[3] -= ComputeOutterSimilarity(freeze_Task4_velocity_);
+	TempInnerSimilarity   = 2 * ComputeInnerSimilarity(Beliefs_[3], freeze_Task4_velocity_);
 	UpdateBeliefsRaw_[3] -= TempInnerSimilarity;
 
 	if (TempInnerSimilarity > NullinnterSimilarity) {
@@ -682,9 +799,9 @@ float TaskLearner::ComputeInnerSimilarity(float b, std::vector<float> task_veloc
 	std::vector<float> OtherTasks;
 	OtherTasks.resize(3);
 
-	OtherTasks[0] = DesiredVelocity_[0] - b * task_velocity[0];
-	OtherTasks[1] = DesiredVelocity_[1] - b * task_velocity[1];
-	OtherTasks[2] = DesiredVelocity_[2] - b * task_velocity[2];
+	OtherTasks[0] = freeze_DesiredVelocity_[0] - b * task_velocity[0];
+	OtherTasks[1] = freeze_DesiredVelocity_[1] - b * task_velocity[1];
+	OtherTasks[2] = freeze_DesiredVelocity_[2] - b * task_velocity[2];
 
 	float innerSimilarity = 0;
 
@@ -701,9 +818,9 @@ float TaskLearner::ComputeOutterSimilarity(std::vector<float> task_velocity) {
 
 	float outterSimiliary = 0;
 
-	outterSimiliary += (RealVelocity_[0] - task_velocity[0]) * (RealVelocity_[0] - task_velocity[0]);
-	outterSimiliary += (RealVelocity_[1] - task_velocity[1]) * (RealVelocity_[1] - task_velocity[1]);
-	outterSimiliary += (RealVelocity_[2] - task_velocity[2]) * (RealVelocity_[2] - task_velocity[2]);
+	outterSimiliary += (freeze_RealVelocity_[0] - task_velocity[0]) * (RealVelocity_[0] - task_velocity[0]);
+	outterSimiliary += (freeze_RealVelocity_[1] - task_velocity[1]) * (RealVelocity_[1] - task_velocity[1]);
+	outterSimiliary += (freeze_RealVelocity_[2] - task_velocity[2]) * (RealVelocity_[2] - task_velocity[2]);
 
 	return outterSimiliary;
 }
@@ -744,7 +861,7 @@ void TaskLearner::DisplayInformation()
 	std::cout << "Adapted velocity = [" << DesiredVelocity_[0] << " , " << DesiredVelocity_[1] << " , " << DesiredVelocity_[2] << "]" << std::endl;
 	std::cout << "Control forces   = [" << ControlWrench_[0] << " , " << ControlWrench_[1] << " , " << ControlWrench_[2] << "]" << std::endl;
 
-	std::cout << "Adaptation rate  = " << epsilon_ << " Control gain  = " << D_gain_ << std::endl;
+	std::cout << "Adaptation rate  = " << epsilon_ <<  " alpha2 = "<< alpha2_ <<" Control gain  = " << D_gain_ << std::endl;
 
 
 	std::cout << "Task 1 : b =" << Beliefs_[0] << "\t db_hat = " << UpdateBeliefsRaw_[0] << "\t db = " << UpdateBeliefs_[0] <<  std::endl;
@@ -758,6 +875,13 @@ void TaskLearner::DisplayInformation()
 	ROS_INFO_STREAM("Real posisition: " << RealPosition_[0] << " " << RealPosition_[1] << " " << RealPosition_[2]);
 	ROS_INFO_STREAM("activations:" << activations_[0]);
 	ROS_INFO_STREAM("activations:" << activations_[1]);
+
+	if( ExtForce_norm2_ > thresh_ext_force_ ){
+		ROS_INFO_STREAM("Learning is active:   External force: " << ExtForce_norm2_ << "  the threshold is set to: " << thresh_ext_force_);
+	}
+	else {
+		ROS_WARN_STREAM("No interaction force: External force = " << ExtForce_norm2_ << "  the threshold is set to: " << thresh_ext_force_);
+	}
 
 	ROS_INFO_STREAM("--------------");
 

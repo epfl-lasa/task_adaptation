@@ -5,6 +5,7 @@
 #include "ros/ros.h"
 
 #include "std_msgs/Float64MultiArray.h"
+#include "std_msgs/Float64.h"
 
 #include "visualization_msgs/Marker.h"
 #include "geometry_msgs/PointStamped.h"
@@ -60,6 +61,7 @@ private:
 
 	ros::Subscriber sub_beliefs_;
 	ros::Subscriber sub_beta_;
+	ros::Subscriber sub_alpha2_;
 
 
 	ros::Publisher pub_surface_;
@@ -97,7 +99,7 @@ private:
 	std::vector<std::vector<double>> BeliefCloud_;
 
 
-	double sigma2_;
+	double alpha2_;
 
 
 	// future path
@@ -156,6 +158,7 @@ private:
 
 	void UpdateBeliefs(const std_msgs::Float64MultiArray::ConstPtr& msg);
 	void UpdateBetas(const std_msgs::Float64MultiArray::ConstPtr& msg);
+	void UpdateAlpha2(const std_msgs::Float64::ConstPtr& msg);
 
 	void UpdateTask1(const geometry_msgs::TwistStamped::ConstPtr& msg);
 	void UpdateTask2(const geometry_msgs::TwistStamped::ConstPtr& msg);

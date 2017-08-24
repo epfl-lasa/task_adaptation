@@ -64,11 +64,10 @@ void LearningVisualizer::Run() {
 
 		UpdateVisualization();
 
-		// ComputeActivation();
 
 		ComputeBeliefs();
 
-		ComputePublishFuturePath();
+		// ComputePublishFuturePath();
 
 		ros::spinOnce();
 		loop_rate_.sleep();
@@ -92,6 +91,8 @@ bool LearningVisualizer::InitROS() {
 
 	sub_beliefs_ = nh_.subscribe(topic_beliefs_  , 10, &LearningVisualizer::UpdateBeliefs, this);
 	sub_beta_ = nh_.subscribe(topic_betas_  , 10, &LearningVisualizer::UpdateBetas, this);
+
+	sub_alpha2_ = nh_.subscribe("/Learning/alpha2"  , 10, &LearningVisualizer::UpdateAlpha2, this);
 
 
 
@@ -263,7 +264,7 @@ void LearningVisualizer::InitClassVariables() {
 	myPointCloud_.channels[0].name = "rgb";
 	myPointCloud_.channels[1].name = "intensity";
 
-	int nx = 20, ny = 30, nz = 15;
+	int nx = 10, ny = 30, nz = 10;
 	myPointCloud_.points.resize(nx * ny * nz);
 	myPointCloud_.channels[0].values.resize(nx * ny * nz);
 	myPointCloud_.channels[1].values.resize(nx * ny * nz);
@@ -365,7 +366,7 @@ void LearningVisualizer::InitClassVariables() {
 	}
 
 
-	sigma2_ = 0.004;
+	alpha2_ = pow(100,2);
 
 
 
@@ -379,6 +380,7 @@ void LearningVisualizer::ComputeActivation() {
 	double sum_activation = 0;
 
 	for (int i = 0; i < myPointCloud_.points.size(); i++) {
+
 		double sum_activation = 0;
 
 		for (int j = 0; j < N_centeriods_; j++) {
@@ -387,14 +389,21 @@ void LearningVisualizer::ComputeActivation() {
 			norm2 += pow(Centers_[j][1] - myPointCloud_.points[i].y, 2);
 			norm2 += pow(Centers_[j][2] - myPointCloud_.points[i].z, 2);
 
-			activations_[i][j] = exp(-0.5 * norm2 / sigma2_);
-
+			if ( alpha2_ * norm2 > 7) {
+				activations_[i][j] = 0;
+			}
+			else{
+				activations_[i][j] = exp(-alpha2_ * norm2 );
+			}
+		
 			sum_activation += activations_[i][j];
 		}
 
-		for (int j = 0; j < N_centeriods_; j++)
-		{
-			activations_[i][j] /= sum_activation;
+		if (sum_activation != 0) {  
+			for (int j = 0; j < N_centeriods_; j++)
+			{
+				activations_[i][j] /= sum_activation;
+			}
 		}
 
 
@@ -402,42 +411,40 @@ void LearningVisualizer::ComputeActivation() {
 
 }
 
+
 void LearningVisualizer::ComputeBeliefs() {
 
-
-
-	for (int i = 0; i < myPointCloud_.points.size(); i++) {
-		for (int j = 0; j < 3; j++) {
+	for (int j = 0; j < 3; j++) {
+		for (int i = 0; i < myPointCloud_.points.size(); i++) {
+			
 			BeliefCloud_[i][j] = 0;
 
 			for (int k = 1; k < N_centeriods_; k++) {
-				BeliefCloud_[i][j] += activations_[i][k] * Beta_[k][j];
+				if(activations_[i][k] > 0.001){ 
+					BeliefCloud_[i][j] += activations_[i][k] * Beta_[k][j];
+					// std::cout << Beta_[k][j] << "\t what?";
+				}
 			}
-
 			if (BeliefCloud_[i][j] < 0) {
 				BeliefCloud_[i][j] = 0;
 			}
+			// std::cout << BeliefCloud_[i][j] << " \t";
 		}
-
-		//may check for sum (over j for each i ) to one
-
 	}
+
+
 
 	for (int i = 0; i < myPointCloud_.points.size(); i++) {
 
 
 		uint8_t r = 255 * BeliefCloud_[i][0];  // from primitive one to red
-		uint8_t g = 255 * BeliefCloud_[i][1];  // from primitive one to green
-		uint8_t b = 255 * BeliefCloud_[i][2];  // from primitive one to blue
+		uint8_t g = 255 * BeliefCloud_[i][1];  // from primitive two to green
+		uint8_t b = 255 * BeliefCloud_[i][2];  // from primitive three to blue
 
 		uint32_t rgb = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
 
 		myPointCloud_.channels[0].values[i] = *reinterpret_cast<float*>(&rgb);
-
-
 	}
-
-
 }
 
 
@@ -559,6 +566,16 @@ void LearningVisualizer::UpdateBetas(const std_msgs::Float64MultiArray::ConstPtr
 		}
 	}
 
+ 	std::cout << " reading beta off the topic" << std::endl;
+}
+
+
+void LearningVisualizer::UpdateAlpha2(const std_msgs::Float64::ConstPtr& msg)
+{
+
+	alpha2_ = msg->data;
+
+		ComputeActivation();
 
 }
 
@@ -619,7 +636,7 @@ void LearningVisualizer::ComputePublishFuturePath() {
 			norm2 += pow(Centers_[i][1] - simulated_pos[1], 2);
 			norm2 += pow(Centers_[i][2] - simulated_pos[2], 2);
 
-			sim_activation[i] = exp(-0.5 * norm2 / sigma2_);
+			sim_activation[i] = exp(- alpha2_ * norm2 );
 
 			sum_activation += sim_activation[i];
 		}
