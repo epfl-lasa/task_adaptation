@@ -71,6 +71,9 @@
 
   </group>
 
+
+  <node pkg="rostopic" type="rostopic" name="angle_setting" args="pub /lwr/joint_controllers/passive_ds_command_orient geometry_msgs/Quaternion '{x: 0.0, y: 1.0, z: 0.0, w: 0.0}' -r 100" />
+
   <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" />
 
 
