@@ -34,7 +34,7 @@ private:
 	ros::Publisher pub_beliefs_;
 
 
-	geometry_msgs::Twist  msgAdaptedVelocity_;
+	geometry_msgs::TwistStamped  msgAdaptedVelocity_;
 	geometry_msgs::WrenchStamped msgWrenchControl_;
 
 	//dynamic reconfig settig

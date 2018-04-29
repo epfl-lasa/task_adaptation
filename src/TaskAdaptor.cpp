@@ -96,7 +96,7 @@ bool TaskAdaptor::InitROS() {
 	sub_task3_ = nh_.subscribe(topic_task3_velocity_, 1000, &TaskAdaptor::UpdateTask3, this, ros::TransportHints().reliable().tcpNoDelay());
 	sub_task4_ = nh_.subscribe(topic_task4_velocity_, 1000, &TaskAdaptor::UpdateTask4, this, ros::TransportHints().reliable().tcpNoDelay());
 
-	pub_adapted_velocity_ = nh_.advertise<geometry_msgs::Twist>(topic_adapted_velocity_, 1);
+	pub_adapted_velocity_ = nh_.advertise<geometry_msgs::TwistStamped>(topic_adapted_velocity_, 1);
 	pub_wrench_control_   = nh_.advertise<geometry_msgs::WrenchStamped>(topic_desired_force_, 1);
 	pub_beliefs_ = nh_.advertise<std_msgs::Float64MultiArray>("beliefs", 1);
 
@@ -181,12 +181,12 @@ void TaskAdaptor::ComputeNewBeliefs() {
 
 	double sum_b = 0;
 
-	for (int i = 0; i < Beliefs_.size(); i++){
-	 sum_b += Beliefs_[i];
+	for (int i = 0; i < Beliefs_.size(); i++) {
+		sum_b += Beliefs_[i];
 	}
 
-	for (int i = 0; i < Beliefs_.size(); i++){
-	 Beliefs_[i] /= sum_b;
+	for (int i = 0; i < Beliefs_.size(); i++) {
+		Beliefs_[i] /= sum_b;
 	}
 
 
@@ -237,10 +237,10 @@ void TaskAdaptor::ComputeDesiredForce() {
 void TaskAdaptor::PublishDesiredForce() {
 
 	msgWrenchControl_.header.stamp = ros::Time::now();
-	msgWrenchControl_.header.frame_id = "world"; // just for visualization
-	msgWrenchControl_.wrench.force.x = ControlWrench_[0];
-	msgWrenchControl_.wrench.force.y = ControlWrench_[1];
-	msgWrenchControl_.wrench.force.z = ControlWrench_[2];
+	msgWrenchControl_.header.frame_id = "ur5_arm_base_link"; // just for visualization
+	msgWrenchControl_.wrench.force.x = 0;//ControlWrench_[0];
+	msgWrenchControl_.wrench.force.y = 0;//ControlWrench_[1];
+	msgWrenchControl_.wrench.force.z = 0;//ControlWrench_[2];
 	msgWrenchControl_.wrench.torque.x = 0;
 	msgWrenchControl_.wrench.torque.y = 0;
 	msgWrenchControl_.wrench.torque.z = 0;
@@ -257,10 +257,11 @@ void TaskAdaptor::PublishAdaptedVelocity() {
 	// msgAdaptedVelocity_.twist.linear.y = DesiredVelocity_[1];
 	// msgAdaptedVelocity_.twist.linear.z = DesiredVelocity_[2];
 
-
-	msgAdaptedVelocity_.linear.x = DesiredVelocity_[0];
-	msgAdaptedVelocity_.linear.y = DesiredVelocity_[1];
-	msgAdaptedVelocity_.linear.z = DesiredVelocity_[2];
+	msgAdaptedVelocity_.header.stamp = ros::Time::now();
+	msgAdaptedVelocity_.header.frame_id = "ur5_arm_base_link";
+	msgAdaptedVelocity_.twist.linear.x = DesiredVelocity_[0];
+	msgAdaptedVelocity_.twist.linear.y = DesiredVelocity_[1];
+	msgAdaptedVelocity_.twist.linear.z = DesiredVelocity_[2];
 
 	pub_adapted_velocity_.publish(msgAdaptedVelocity_);
 }
@@ -399,7 +400,7 @@ void TaskAdaptor::RawAdaptation()
 	UpdateBeliefsRaw_[0] -= ComputeOutterSimilarity(Task0_velocity_);
 	UpdateBeliefsRaw_[0] -= NullinnterSimilarity;
 
-	if(Beliefs_[0] < 0.2){
+	if (Beliefs_[0] < 0.2) {
 		UpdateBeliefsRaw_[0] -= 1000;
 	}
 

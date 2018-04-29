@@ -55,10 +55,10 @@ public:
 		target_pose_3_.resize(3);
 		target_pose_4_.resize(3);
 
-		marker_1_.header.frame_id = "world";
-		marker_2_.header.frame_id = "world";
-		marker_3_.header.frame_id = "world";
-		marker_4_.header.frame_id = "world";
+		marker_1_.header.frame_id = "ur5_arm_base_link";
+		marker_2_.header.frame_id = "ur5_arm_base_link";
+		marker_3_.header.frame_id = "ur5_arm_base_link";
+		marker_4_.header.frame_id = "ur5_arm_base_link";
 
 		marker_1_.type = visualization_msgs::Marker::SPHERE;
 		marker_2_.type = visualization_msgs::Marker::SPHERE;
