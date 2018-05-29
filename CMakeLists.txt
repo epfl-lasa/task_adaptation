@@ -108,6 +108,7 @@ generate_messages(
 generate_dynamic_reconfigure_options(
   cfg/task_adaptation_params.cfg
   cfg/task_learning_params.cfg
+  cfg/TwoHandoversAdaptor_params.cfg
 )  
 
 
@@ -187,7 +188,10 @@ add_executable(task_learning_visualization
         src/LearningVisualizer
         include/LearningVisualizer.h)
 
-
+add_executable(TwoHandoversAdaptor
+                src/TwoHandoversAdaptor_node.cpp
+                src/TwoHandoversAdaptor.cpp
+                include/TwoHandoversAdaptor.h)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -212,6 +216,8 @@ add_dependencies(task_learning_visualization    ${${PROJECT_NAME}_EXPORTED_TARGE
 
 add_dependencies(twoTasks_adaptation_node  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
 
+add_dependencies(TwoHandoversAdaptor  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
+
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
@@ -232,6 +238,8 @@ target_link_libraries(twoTasks_adaptation_node ${catkin_LIBRARIES})
 target_link_libraries(belief_visualizer_node ${catkin_LIBRARIES})
 target_link_libraries(record_adaptation_node ${catkin_LIBRARIES})
 target_link_libraries(cpr_record_adaptation_node ${catkin_LIBRARIES})
+
+target_link_libraries(TwoHandoversAdaptor ${catkin_LIBRARIES})
 
 
 
