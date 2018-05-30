@@ -10,12 +10,26 @@ int main(int argc, char **argv)
   double frequency = 100.0;
 
   // Parameters
+  std::string topic_target1_position;
+  std::string topic_target2_position;
   std::string topic_target1_velocity;
   std::string topic_target2_velocity;
   std::string topic_task1_velocity;
   std::string topic_task2_velocity;
   std::string topic_adapted_velocity;
 
+
+  if (!nh.getParam("topic_target1_position", topic_target1_position))
+  {
+    ROS_ERROR("Couldn't retrieve the topic name for the target 1 position. ");
+    return -1;
+  }
+
+  if (!nh.getParam("topic_target2_position", topic_target2_position))
+  {
+    ROS_ERROR("Couldn't retrieve the topic name for the target 2 position. ");
+    return -1;
+  }
 
   if (!nh.getParam("topic_target1_velocity", topic_target1_velocity))
   {
@@ -49,12 +63,14 @@ int main(int argc, char **argv)
 
 
   TwoHandoversAdaptor task_adaptor(nh,
-                               frequency,
-                               topic_target1_velocity,
-                               topic_target2_velocity,
-                               topic_task1_velocity,
-                               topic_task2_velocity,
-                               topic_adapted_velocity);
+                                   frequency,
+                                   topic_target1_position,
+                                   topic_target2_position,
+                                   topic_target1_velocity,
+                                   topic_target2_velocity,
+                                   topic_task1_velocity,
+                                   topic_task2_velocity,
+                                   topic_adapted_velocity);
 
   task_adaptor.Run();
 

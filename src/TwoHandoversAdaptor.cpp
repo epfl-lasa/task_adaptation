@@ -3,6 +3,8 @@
 
 TwoHandoversAdaptor::TwoHandoversAdaptor(ros::NodeHandle &n,
         double frequency,
+        std::string topic_target1_position,
+        std::string topic_target2_position,
         std::string topic_target1_velocity,
         std::string topic_target2_velocity,
         std::string topic_Task1_velocity,
@@ -15,11 +17,14 @@ TwoHandoversAdaptor::TwoHandoversAdaptor(ros::NodeHandle &n,
 
 	ROS_INFO_STREAM("Handover adaptation node is created at: " << nh_.getNamespace() << " with freq: " << frequency << "Hz");
 
-
+	sub_Target1_position_ = nh_.subscribe(topic_target1_position, 1,
+	                                      &TwoHandoversAdaptor::UpdateTarget1position, this, ros::TransportHints().reliable().tcpNoDelay());
+	sub_Target2_position_ = nh_.subscribe(topic_target2_position, 1,
+	                                      &TwoHandoversAdaptor::UpdateTarget2position, this, ros::TransportHints().reliable().tcpNoDelay());
 	sub_Target1_velocity_ = nh_.subscribe(topic_target1_velocity, 1,
-	                                      &TwoHandoversAdaptor::UpdateTarget1, this, ros::TransportHints().reliable().tcpNoDelay());
+	                                      &TwoHandoversAdaptor::UpdateTarget1velocity, this, ros::TransportHints().reliable().tcpNoDelay());
 	sub_Target2_velocity_ = nh_.subscribe(topic_target2_velocity, 1,
-	                                      &TwoHandoversAdaptor::UpdateTarget2, this, ros::TransportHints().reliable().tcpNoDelay());
+	                                      &TwoHandoversAdaptor::UpdateTarget2velocity, this, ros::TransportHints().reliable().tcpNoDelay());
 	sub_Task1_velocity_ = nh_.subscribe(topic_Task1_velocity, 1,
 	                                    &TwoHandoversAdaptor::UpdateTask1, this, ros::TransportHints().reliable().tcpNoDelay());
 	sub_Task2_velocity_ = nh_.subscribe(topic_Task2_velocity, 1,
@@ -40,6 +45,9 @@ TwoHandoversAdaptor::TwoHandoversAdaptor(ros::NodeHandle &n,
 	}
 
 	// initializing the varibales
+	Target1_position_.resize(3);
+	Target2_position_.resize(3);
+
 	Target1_velocity_.resize(3);
 	Target2_velocity_.resize(3);
 
@@ -59,6 +67,8 @@ TwoHandoversAdaptor::TwoHandoversAdaptor(ros::NodeHandle &n,
 	std::fill(UpdateBeliefs_.begin(), UpdateBeliefs_.end(), 0);
 
 	epsilon_ = 3;
+	posVelBias_ = 0;
+	alpha_ = 0;
 
 
 }
@@ -141,19 +151,27 @@ void TwoHandoversAdaptor::Adaptation() {
 	// }
 
 
+	// update based on velocity information
 	for (int i = 0; i < 3; i++) {
-		UpdateBeliefs_[0] += Task1_velocity_[i] * Target1_velocity_[i];
+		UpdateBeliefs_[0] += (-1 * Task1_velocity_[i] ) * Target1_velocity_[i];
 
-		UpdateBeliefs_[1] += Task2_velocity_[i] * Target2_velocity_[i];
+		UpdateBeliefs_[1] += (-1 * Task2_velocity_[i] ) * Target2_velocity_[i];
 	}
 
-	for (int i = 0; i < 3; i++) {
-		double d1 = (Task1_velocity_[i] );
-		UpdateBeliefs_[0] -= 0.1 * d1 * d1;
 
-		double d2 = (Task2_velocity_[i] );
-		UpdateBeliefs_[1] -= 0.1 * d2 * d2;
+	// update based on velocity information
+	double d1 = 0;
+	double d2 = 0;
+
+	for (int i = 0; i < 3; i++) {
+		d1 += Target1_position_[i] * Target1_position_[i];
+		d2 += Target2_position_[i] * Target2_position_[i];
 	}
+
+	UpdateBeliefs_[0] += posVelBias_ * exp(-alpha_ * d1);
+	UpdateBeliefs_[1] += posVelBias_ * exp(-alpha_ * d2);
+
+
 
 	// winner take all
 	double offset = 0.5 * (UpdateBeliefs_[0] + UpdateBeliefs_[1]);
@@ -248,7 +266,24 @@ void TwoHandoversAdaptor::PublishAdaptedVelocity() {
 
 }
 
-void TwoHandoversAdaptor::UpdateTarget1(const geometry_msgs::Twist::ConstPtr& msg) {
+void TwoHandoversAdaptor::UpdateTarget1position(const geometry_msgs::Pose::ConstPtr& msg) {
+
+	Target1_position_[0] = msg->position.x;
+	Target1_position_[1] = msg->position.y;
+	Target1_position_[2] = msg->position.z;
+
+}
+
+void TwoHandoversAdaptor::UpdateTarget2position(const geometry_msgs::Pose::ConstPtr& msg) {
+
+	Target2_position_[0] = msg->position.x;
+	Target2_position_[1] = msg->position.y;
+	Target2_position_[2] = msg->position.z;
+
+}
+
+
+void TwoHandoversAdaptor::UpdateTarget1velocity(const geometry_msgs::Twist::ConstPtr& msg) {
 
 	Target1_velocity_[0] = msg->linear.x;
 	Target1_velocity_[1] = msg->linear.y;
@@ -257,7 +292,7 @@ void TwoHandoversAdaptor::UpdateTarget1(const geometry_msgs::Twist::ConstPtr& ms
 	flag_newdata_[0] = true;
 }
 
-void TwoHandoversAdaptor::UpdateTarget2(const geometry_msgs::Twist::ConstPtr& msg) {
+void TwoHandoversAdaptor::UpdateTarget2velocity(const geometry_msgs::Twist::ConstPtr& msg) {
 
 	Target2_velocity_[0] = msg->linear.x;
 	Target2_velocity_[1] = msg->linear.y;
@@ -294,6 +329,8 @@ void TwoHandoversAdaptor::DynCallback(task_adaptation::TwoHandoversAdaptor_param
 {
 	// Set class variables to new values. They should match what is input at the dynamic reconfigure GUI.
 	epsilon_ = config.epsilon;
+	posVelBias_ = config.bias;
+	alpha_ = config.alpha;
 
 	ROS_INFO_STREAM("configCallback: received update!  espsilon = " << epsilon_);
 
@@ -308,6 +345,9 @@ void TwoHandoversAdaptor::DisplayInformation()
 	//std::cout << RealVelocity[0] << "\t" <<  RealVelocity[1] << "\t" << RealVelocity[2]  << std::endl;
 
 	std::cout << "Time = " << ros::Time::now() - time_start_ << std::endl;
+
+	std::cout << "Task 1 velocity = [" << Task1_velocity_[0] << " , " << Task1_velocity_[1] << " , " << Task1_velocity_[2] << "]" << std::endl;
+	std::cout << "Task 2 velocity = [" << Task2_velocity_[0] << " , " << Task2_velocity_[1] << " , " << Task2_velocity_[2] << "]" << std::endl;
 
 	std::cout << "Adapted velocity = [" << DesiredVelocity_[0] << " , " << DesiredVelocity_[1] << " , " << DesiredVelocity_[2] << "]" << std::endl;
 

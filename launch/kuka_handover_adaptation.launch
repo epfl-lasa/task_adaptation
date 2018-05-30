@@ -65,6 +65,8 @@
 
 
   <group ns="handover_adaptation">
+    <param name="topic_target1_position"   value="$(arg topic_target1_position)"/>
+    <param name="topic_target2_position"   value="$(arg topic_target2_position)"/>
     <param name="topic_target1_velocity"   value="$(arg topic_target1_velocity)"/>
     <param name="topic_target2_velocity"   value="$(arg topic_target2_velocity)"/>
     <param name="topic_task1_velocity"     value="$(arg topic_task1_velocity)"/>
