@@ -9,6 +9,8 @@ TwoHandoversAdaptor::TwoHandoversAdaptor(ros::NodeHandle &n,
         std::string topic_target2_velocity,
         std::string topic_Task1_velocity,
         std::string topic_Task2_velocity,
+        std::string topic_robot_position,
+        std::string topic_robot_velocity,
         std::string topic_adapted_velocity)
 	:
 	nh_(n),
@@ -29,6 +31,10 @@ TwoHandoversAdaptor::TwoHandoversAdaptor(ros::NodeHandle &n,
 	                                    &TwoHandoversAdaptor::UpdateTask1, this, ros::TransportHints().reliable().tcpNoDelay());
 	sub_Task2_velocity_ = nh_.subscribe(topic_Task2_velocity, 1,
 	                                    &TwoHandoversAdaptor::UpdateTask2, this, ros::TransportHints().reliable().tcpNoDelay());
+	sub_robot_position_ = nh_.subscribe(topic_robot_position, 1,
+	                                    &TwoHandoversAdaptor::UpdateRobotPosition, this, ros::TransportHints().reliable().tcpNoDelay());
+	sub_robot_velocity_ = nh_.subscribe(topic_robot_velocity, 1,
+	                                    &TwoHandoversAdaptor::UpdateRobotVelocity, this, ros::TransportHints().reliable().tcpNoDelay());
 
 	pub_adapted_velocity_ = nh_.advertise<geometry_msgs::Twist>(topic_adapted_velocity, 1);
 	pub_beliefs_ = nh_.advertise<std_msgs::Float64MultiArray>("beliefs", 1);
@@ -53,6 +59,10 @@ TwoHandoversAdaptor::TwoHandoversAdaptor(ros::NodeHandle &n,
 
 	Task1_velocity_.resize(3);
 	Task2_velocity_.resize(3);
+
+	Robot_position_.resize(3);
+	Robot_velocity_.resize(3);
+
 
 	DesiredVelocity_.resize(3);
 
@@ -268,35 +278,35 @@ void TwoHandoversAdaptor::PublishAdaptedVelocity() {
 
 void TwoHandoversAdaptor::UpdateTarget1position(const geometry_msgs::Pose::ConstPtr& msg) {
 
-	Target1_position_[0] = msg->position.x;
-	Target1_position_[1] = msg->position.y;
-	Target1_position_[2] = msg->position.z;
+	Target1_position_[0] = msg->position.x - Robot_position_[0];
+	Target1_position_[1] = msg->position.y - Robot_position_[1];
+	Target1_position_[2] = msg->position.z - Robot_position_[2];
 
 }
 
 void TwoHandoversAdaptor::UpdateTarget2position(const geometry_msgs::Pose::ConstPtr& msg) {
 
-	Target2_position_[0] = msg->position.x;
-	Target2_position_[1] = msg->position.y;
-	Target2_position_[2] = msg->position.z;
+	Target2_position_[0] = msg->position.x - Robot_position_[0];
+	Target2_position_[1] = msg->position.y - Robot_position_[1];
+	Target2_position_[2] = msg->position.z - Robot_position_[2];
 
 }
 
 
 void TwoHandoversAdaptor::UpdateTarget1velocity(const geometry_msgs::Twist::ConstPtr& msg) {
 
-	Target1_velocity_[0] = msg->linear.x;
-	Target1_velocity_[1] = msg->linear.y;
-	Target1_velocity_[2] = msg->linear.z;
+	Target1_velocity_[0] = msg->linear.x - Robot_velocity_[0];
+	Target1_velocity_[1] = msg->linear.y - Robot_velocity_[1];
+	Target1_velocity_[2] = msg->linear.z - Robot_velocity_[2];
 
 	flag_newdata_[0] = true;
 }
 
 void TwoHandoversAdaptor::UpdateTarget2velocity(const geometry_msgs::Twist::ConstPtr& msg) {
 
-	Target2_velocity_[0] = msg->linear.x;
-	Target2_velocity_[1] = msg->linear.y;
-	Target2_velocity_[2] = msg->linear.z;
+	Target2_velocity_[0] = msg->linear.x - Robot_velocity_[0];
+	Target2_velocity_[1] = msg->linear.y - Robot_velocity_[1];
+	Target2_velocity_[2] = msg->linear.z - Robot_velocity_[2];
 
 	flag_newdata_[1] = true;
 }
@@ -317,6 +327,20 @@ void TwoHandoversAdaptor::UpdateTask2(const geometry_msgs::TwistStamped::ConstPt
 	Task2_velocity_[2] = msg->twist.linear.z;
 
 	flag_newdata_[3] = true;
+}
+
+void TwoHandoversAdaptor::UpdateRobotPosition(const geometry_msgs::Pose::ConstPtr& msg) {
+	Robot_position_[0] = msg->position.x;
+	Robot_position_[1] = msg->position.y;
+	Robot_position_[2] = msg->position.z;
+
+}
+void TwoHandoversAdaptor::UpdateRobotVelocity(const geometry_msgs::Twist::ConstPtr& msg) {
+
+	Robot_velocity_[0] = msg->linear.x;
+	Robot_velocity_[1] = msg->linear.y;
+	Robot_velocity_[2] = msg->linear.z;
+
 }
 
 

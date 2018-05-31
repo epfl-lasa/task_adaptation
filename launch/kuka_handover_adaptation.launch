@@ -18,8 +18,6 @@
 
 
   <!-- Pass in mocap_config_file:=/path/to/config.yaml to change options. -->
-  <arg name="mocap_config_file"
-       default="$(find cpr_mocap_tracking)/config/mocap_cpr.yml" />
 
   <node name="mocap_node"
           pkg="mocap_optitrack"
@@ -44,6 +42,7 @@
     <param name="v_max" value="0.5"/>
     <node name="tracking_node" pkg="ds_motion_generator" type="target_tracker_node" output="screen"/>
   </group>
+
 
   <group ns="ds1">
     <param name="input_topic_name" value="$(arg topic_real_pose)"/>
@@ -71,7 +70,9 @@
     <param name="topic_target2_velocity"   value="$(arg topic_target2_velocity)"/>
     <param name="topic_task1_velocity"     value="$(arg topic_task1_velocity)"/>
     <param name="topic_task2_velocity"     value="$(arg topic_task2_velocity)"/>
-    <param name="topic_adapted_velocity"     value="$(arg topic_adapted_velocity)"/>    
+    <param name="topic_robot_position"     value="$(arg topic_real_pose)"/>
+    <param name="topic_robot_velocity"     value="$(arg topic_real_velocity)"/>
+    <param name="topic_adapted_velocity"   value="$(arg topic_adapted_velocity)"/>    
     <node name="TA_node" pkg="task_adaptation" type="TwoHandoversAdaptor" output="screen"/>
 
     <!-- <node name="TA_record" pkg="task_adaptation" type="record_adaptation_node" output="screen"/> -->

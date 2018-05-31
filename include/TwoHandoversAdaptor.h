@@ -30,6 +30,9 @@ private:
 	ros::Subscriber sub_Target2_velocity_;
 	ros::Subscriber sub_Task1_velocity_;
 	ros::Subscriber sub_Task2_velocity_;
+	ros::Subscriber sub_robot_position_;
+	ros::Subscriber sub_robot_velocity_;
+
 
 	ros::Publisher pub_adapted_velocity_;
 	ros::Publisher pub_beliefs_;
@@ -40,6 +43,9 @@ private:
 	std::vector<float> Target2_velocity_;
 	std::vector<float> Task1_velocity_;
 	std::vector<float> Task2_velocity_;
+	std::vector<float> Robot_position_;
+	std::vector<float> Robot_velocity_;
+
 	std::vector<float> DesiredVelocity_;
 
 
@@ -73,6 +79,8 @@ public:
 	                    std::string topic_task1_velocity,
 	                    std::string topic_task2_velocity,
 	                    std::string topic_adapted_velocity,
+	                    std::string topic_robot_position,
+	                    std::string topic_robot_velocity,
 	                    std::string topic_desired_force);
 
 
@@ -96,6 +104,9 @@ private:
 
 	void UpdateTask1(const geometry_msgs::TwistStamped::ConstPtr& msg);
 	void UpdateTask2(const geometry_msgs::TwistStamped::ConstPtr& msg);
+
+	void UpdateRobotPosition(const geometry_msgs::Pose::ConstPtr& msg);
+	void UpdateRobotVelocity(const geometry_msgs::Twist::ConstPtr& msg);
 
 	bool CheckNewData();
 

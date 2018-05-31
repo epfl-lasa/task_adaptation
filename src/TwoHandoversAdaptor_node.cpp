@@ -17,6 +17,8 @@ int main(int argc, char **argv)
   std::string topic_task1_velocity;
   std::string topic_task2_velocity;
   std::string topic_adapted_velocity;
+  std::string topic_robot_position;
+  std::string topic_robot_velocity;
 
 
   if (!nh.getParam("topic_target1_position", topic_target1_position))
@@ -61,6 +63,18 @@ int main(int argc, char **argv)
     return -1;
   }
 
+  if (!nh.getParam("topic_robot_position", topic_robot_position))
+  {
+    ROS_ERROR("Couldn't retrieve the topic name for the robot position. ");
+    return -1;
+  }
+
+  if (!nh.getParam("topic_robot_velocity", topic_robot_velocity))
+  {
+    ROS_ERROR("Couldn't retrieve the topic name for the robot velocity. ");
+    return -1;
+  }
+
 
   TwoHandoversAdaptor task_adaptor(nh,
                                    frequency,
@@ -70,6 +84,8 @@ int main(int argc, char **argv)
                                    topic_target2_velocity,
                                    topic_task1_velocity,
                                    topic_task2_velocity,
+                                   topic_robot_position,
+                                   topic_robot_velocity,
                                    topic_adapted_velocity);
 
   task_adaptor.Run();
