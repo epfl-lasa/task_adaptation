@@ -207,6 +207,8 @@ void TaskAdaptor::PublishBeliefs() {
 		msg.data.push_back(Beliefs_[i]);
 	}
 
+	msg.data.push_back(Beliefs_[3] + Beliefs_[4]);
+
 	pub_beliefs_.publish(msg);
 
 }

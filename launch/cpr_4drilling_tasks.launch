@@ -1,0 +1,73 @@
+<?xml version="1.0" ?>
+<launch>
+
+  <arg name="topic_real_velocity" default="/ur5/ur5_cartesian_velocity_controller_sim/ee_state_twist"/>
+
+  <arg name="topic_task1_velocity" default="/Task1/desired_velocity"/>
+  <arg name="topic_task2_velocity" default="/Task2/desired_velocity"/>
+  <arg name="topic_task3_velocity" default="/Task3/desired_velocity"/>
+  <arg name="topic_task4_velocity" default="/Task4/desired_velocity"/>
+
+  <arg name="topic_adapted_velocity" default="/ds_desired_velocity"/>
+  <arg name="topic_desired_force" default="/admittance_control/wrench_control"/>
+
+
+
+  <group ns="Task1">
+    <param name="input_topic_name" value="/ur5/ur5_cartesian_velocity_controller_sim/ee_state_pose"/>
+    <param name="output_topic_name" value="$(arg topic_task1_velocity)"/>
+    <param name="output_filtered_topic_name" value="filtered_desired_velocity"/>
+    <rosparam command="load" file="$(find ds_motion_generator)/config/cpr_4tasks/cpr_drill_front_up.yml"/>
+    <node name="ds_node" pkg="ds_motion_generator" type="active_motionGenerator_node" output="screen"/>
+  </group>
+
+  <group ns="Task2">
+    <param name="input_topic_name" value="/ur5/ur5_cartesian_velocity_controller_sim/ee_state_pose"/>
+    <param name="output_topic_name" value="$(arg topic_task2_velocity)"/>
+    <param name="output_filtered_topic_name" value="filtered_desired_velocity"/>
+    <rosparam command="load" file="$(find ds_motion_generator)/config/cpr_4tasks/cpr_drill_front_down.yml"/>
+    <node name="ds_node" pkg="ds_motion_generator" type="active_motionGenerator_node" output="screen"/>
+  </group>
+
+  <group ns="Task3">
+    <param name="input_topic_name" value="/ur5/ur5_cartesian_velocity_controller_sim/ee_state_pose"/>
+    <param name="output_topic_name" value="$(arg topic_task3_velocity)"/>
+    <param name="output_filtered_topic_name" value="filtered_desired_velocity"/>
+    <rosparam command="load" file="$(find ds_motion_generator)/config/cpr_4tasks/cpr_retreat.yml"/>
+    <node name="ds_node" pkg="ds_motion_generator" type="active_motionGenerator_node" output="screen"/>
+  </group>
+
+  <group ns="Task4">
+    <param name="input_topic_name" value="/ur5/ur5_cartesian_velocity_controller_sim/ee_state_pose"/>
+    <param name="output_topic_name" value="$(arg topic_task4_velocity)"/>
+    <param name="output_filtered_topic_name" value="filtered_desired_velocity"/>
+    <rosparam command="load" file="$(find ds_motion_generator)/config/cpr_4tasks/cpr_retreat.yml"/>
+    <node name="ds_node" pkg="ds_motion_generator" type="active_motionGenerator_node" output="screen"/>
+  </group>
+
+
+
+
+    <group ns="task_adaptation">
+    <param name="topic_real_velocity"    value="$(arg topic_real_velocity)"/>
+    <param name="topic_task1_velocity"   value="$(arg topic_task1_velocity)"/>
+    <param name="topic_task2_velocity"   value="$(arg topic_task2_velocity)"/>
+    <param name="topic_task3_velocity"   value="$(arg topic_task3_velocity)"/>
+    <param name="topic_task4_velocity"   value="$(arg topic_task4_velocity)"/>
+    <param name="topic_adapted_velocity" value="$(arg topic_adapted_velocity)"/>
+    <param name="topic_desired_force"    value="$(arg topic_desired_force)"/>
+    <node name="TA_node" pkg="task_adaptation" type="task_adaptation_node" output="screen"/>
+
+    <!-- <node name="TA_record" pkg="task_adaptation" type="cpr_record_adaptation_node" output="screen"/> -->
+
+    <node name="TA_vis" pkg="task_adaptation" type="belief_visualizer_node" output="screen"/>
+  </group>
+
+
+  <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" />
+
+    <node name="ee_splitter" pkg="admittance_control" type="cpr_ee_state_splitter_node" output="screen"/>
+
+
+
+</launch>
